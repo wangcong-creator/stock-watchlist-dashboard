@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stock Watchlist Dashboard</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei','Segoe UI',sans-serif;
+     background:#0f172a;color:#e2e8f0;min-height:100vh;display:flex;align-items:center;justify-content:center}
+.card{background:#1e293b;border:1px solid #334155;border-radius:20px;padding:48px 56px;text-align:center;max-width:480px;width:90%}
+h1{font-size:2rem;font-weight:800;color:#f1f5f9;margin-bottom:8px}
+.sub{font-size:.95rem;color:#64748b;margin-bottom:36px;line-height:1.5}
+.sub span{color:#94a3b8}
+.links{display:flex;flex-direction:column;gap:14px}
+a.btn{display:block;padding:16px 24px;border-radius:12px;text-decoration:none;font-weight:700;font-size:1rem;transition:all .15s}
+a.btn-en{background:#3b82f6;color:#fff}
+a.btn-en:hover{background:#2563eb;transform:translateY(-1px);box-shadow:0 4px 20px rgba(59,130,246,.4)}
+a.btn-zh{background:#1e293b;border:2px solid #3b82f6;color:#60a5fa}
+a.btn-zh:hover{background:#1e3a5f;transform:translateY(-1px)}
+.badge{display:inline-block;font-size:.7rem;background:#0f172a;border:1px solid #334155;color:#64748b;
+       border-radius:6px;padding:2px 8px;margin-left:8px;vertical-align:middle;font-weight:400}
+.footer{margin-top:32px;font-size:.72rem;color:#334155}
+</style>
+</head>
+<body>
+<div class="card">
+  <div style="font-size:2.5rem;margin-bottom:16px">📈</div>
+  <h1>Stock Watchlist</h1>
+  <p class="sub">124 stocks &amp; ETFs across semiconductors, AI,<br>
+    <span>energy, space, crypto and more</span></p>
+  <div class="links">
+    <a class="btn btn-en" href="dashboard.html">
+      English Dashboard <span class="badge">EN</span>
+    </a>
+    <a class="btn btn-zh" href="dashboard_zh.html">
+      中文仪表盘 <span class="badge">中文</span>
+    </a>
+  </div>
+  <div class="footer">Data via Yahoo Finance · Refreshed daily</div>
+</div>
+</body>
+</html>
