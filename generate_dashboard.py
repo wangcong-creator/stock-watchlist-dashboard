@@ -428,6 +428,7 @@ canvas.sparkline{width:100%;height:40px;display:block}
 .card-metrics{display:grid;grid-template-columns:1fr 1fr;gap:3px 8px;margin-top:6px}
 .metric{font-size:.71rem;color:#94a3b8}
 .metric span{color:#cbd5e1;font-weight:500}
+.metric span.pos{color:#22c55e}.metric span.neg{color:#ef4444}
 .detail-btn{display:block;width:100%;margin-top:10px;background:#0f172a;border:1px solid #334155;color:#94a3b8;border-radius:7px;padding:5px;font-size:.75rem;cursor:pointer;text-align:center;transition:all .12s}
 .detail-btn:hover{border-color:#3b82f6;color:#60a5fa}
 .no-data-overlay{position:absolute;inset:0;background:rgba(15,23,42,.6);display:flex;align-items:center;justify-content:center;border-radius:12px;font-size:.75rem;color:#64748b}
@@ -602,11 +603,12 @@ document.getElementById("genDate").textContent = "Generated: " + STATS.generated
 
 // Populate exchange dropdown
 (function buildExchanges(){
-  const exSet = new Set(DATA.map(d=>d.ex).filter(Boolean));
-  const sel   = document.getElementById("selExchange");
-  [...exSet].sort().forEach(ex=>{
+  const seen = new Map();
+  DATA.forEach(d=>{ if(d.ex && !seen.has(d.ex)) seen.set(d.ex, d.ex_name||d.ex); });
+  const sel = document.getElementById("selExchange");
+  [...seen.entries()].sort((a,b)=>a[1].localeCompare(b[1])).forEach(([code,name])=>{
     const opt = document.createElement("option");
-    opt.value = ex; opt.textContent = ex;
+    opt.value = code; opt.textContent = name;
     sel.appendChild(opt);
   });
 })();
@@ -723,7 +725,7 @@ function render(){
         <span class="sector-badge" style="background:${bgCol};color:${fgCol}">${meta.label}</span>
       </div>
       <div class="company" title="${d.n}">${d.n}</div>
-      <div class="ex-ipo">${exIpo}</div>
+      ${exIpo ? `<div class="ex-ipo">${exIpo}</div>` : ""}
       <div class="price-row">
         <span class="price">${px}</span>
         ${chgHtml}
@@ -736,7 +738,7 @@ function render(){
         <div class="metric">P/E <span>${peStr}</span></div>
         <div class="metric">Fwd P/E <span>${fpeStr}</span></div>
         <div class="metric">Beta <span>${betaStr}</span></div>
-        <div class="metric">IPO <span>${d.ipo||"—"}</span></div>
+        <div class="metric">1Y % <span class="${d.chg1y>0?'pos':d.chg1y<0?'neg':''}">${d.chg1y!==null?(d.chg1y>0?"+":"")+d.chg1y.toFixed(1)+"%":"—"}</span></div>
       </div>
       ${d.err ? '<div class="no-data-overlay">Data unavailable</div>' : ""}
     </div>`;

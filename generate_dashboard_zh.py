@@ -102,6 +102,7 @@ canvas.sparkline{width:100%;height:40px;display:block}
 .card-metrics{display:grid;grid-template-columns:1fr 1fr;gap:3px 8px;margin-top:6px}
 .metric{font-size:.71rem;color:#94a3b8}
 .metric span{color:#cbd5e1;font-weight:500}
+.metric span.pos{color:#22c55e}.metric span.neg{color:#ef4444}
 .detail-btn{display:block;width:100%;margin-top:10px;background:#0f172a;border:1px solid #334155;color:#94a3b8;border-radius:7px;padding:5px;font-size:.75rem;cursor:pointer;text-align:center;transition:all .12s}
 .detail-btn:hover{border-color:#3b82f6;color:#60a5fa}
 .no-data-overlay{position:absolute;inset:0;background:rgba(15,23,42,.6);display:flex;align-items:center;justify-content:center;border-radius:12px;font-size:.75rem;color:#64748b}
@@ -125,7 +126,7 @@ canvas#mainChart{width:100%;height:260px;display:block;border-radius:8px;backgro
 .about-section h3{font-size:.78rem;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
 .about-section p{font-size:.82rem;color:#94a3b8;line-height:1.55}
 .about-section .website{margin-top:8px;font-size:.8rem}
-.ex-ipo{font-size:.65rem;color:#64748b;margin-top:2px;letter-spacing:.3px}
+.ex-ipo{font-size:.67rem;color:#475569;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ext-links{display:flex;gap:8px;flex-wrap:wrap;padding:0 22px 14px}
 .ext-link{display:inline-block;padding:5px 12px;border-radius:6px;font-size:.75rem;font-weight:600;
   text-decoration:none;transition:opacity .15s}
@@ -263,11 +264,12 @@ document.getElementById("genDate").textContent = "生成时间：" + STATS.gener
 
 // 交易所下拉
 (function buildExchanges(){
-  const exSet = new Set(DATA.map(d=>d.ex).filter(Boolean));
+  const seen = new Map();
+  DATA.forEach(d=>{ if(d.ex && !seen.has(d.ex)) seen.set(d.ex, d.ex_name||d.ex); });
   const sel = document.getElementById("selExchange");
-  [...exSet].sort().forEach(ex=>{
+  [...seen.entries()].sort((a,b)=>a[1].localeCompare(b[1])).forEach(([code,name])=>{
     const opt = document.createElement("option");
-    opt.value = ex; opt.textContent = ex;
+    opt.value = code; opt.textContent = name;
     sel.appendChild(opt);
   });
 })();
@@ -389,7 +391,7 @@ function render(){
         <div class="metric">市盈率 <span>${peStr}</span></div>
         <div class="metric">预期PE <span>${fpeStr}</span></div>
         <div class="metric">贝塔 <span>${betaStr}</span></div>
-        <div class="metric">上市 <span>${d.ipo||"—"}</span></div>
+        <div class="metric">年涨跌 <span class="${d.chg1y>0?'pos':d.chg1y<0?'neg':''}">${d.chg1y!==null?(d.chg1y>0?"+":"")+d.chg1y.toFixed(1)+"%":"—"}</span></div>
       </div>
       ${d.err?'<div class="no-data-overlay">数据暂不可用</div>':""}
     </div>`;
