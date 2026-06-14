@@ -107,6 +107,25 @@ SECTOR_META = {
     "hardware_other":   {"label": "Hardware & Other",     "color": "#78716c"},
 }
 
+# Full exchange display names
+EXCHANGE_NAMES = {
+    "NMS": "NASDAQ",  "NGM": "NASDAQ",  "NCM": "NASDAQ",
+    "NYQ": "NYSE",    "ASE": "NYSE American",  "PCX": "NYSE Arca",
+    "AMS": "Euronext Amsterdam",  "LSE": "London SE",
+    "TSE": "Tokyo SE",  "STO": "Nasdaq Stockholm",
+    "HEL": "Nasdaq Helsinki",  "OTC": "OTC Markets",
+    "BATS": "CBOE/BATS",
+}
+
+# Exchange codes used by Google Finance URLs
+GF_EXCHANGE = {
+    "NMS": "NASDAQ",  "NGM": "NASDAQ",  "NCM": "NASDAQ",
+    "NYQ": "NYSE",    "ASE": "NYSEAMERICAN",  "PCX": "NYSEARCA",
+    "AMS": "AMS",     "LSE": "LON",
+    "TSE": "TYO",     "STO": "STO",
+    "HEL": "HEL",     "OTC": "OTCMKTS",
+}
+
 # ══════════════════════════════════════════════════════════════════════════════
 # 3  STOCK LIST PARSER
 # ══════════════════════════════════════════════════════════════════════════════
@@ -293,15 +312,22 @@ def build_records(tickers: list, cache: dict) -> list:
     for ticker in tickers:
         d = cache.get(ticker, {})
         sector = SECTOR_MAP.get(ticker, "hardware_other")
+        ex_code = d.get("exchange") or ""
+        ex_name = EXCHANGE_NAMES.get(ex_code, ex_code)
+        gf_ex   = GF_EXCHANGE.get(ex_code, "NASDAQ")
         rec = {
             "t":        ticker,
             "n":        d.get("name") or ticker,
             "s":        sector,
-            "ex":       d.get("exchange") or "",
+            "ex":       ex_code,
+            "ex_name":  ex_name,
             "cur":      d.get("currency") or "USD",
             "country":  d.get("country") or "",
             "web":      d.get("website") or "",
             "about":    d.get("about") or "",
+            "link_yf":   f"https://finance.yahoo.com/quote/{ticker}/",
+            "link_gf":   f"https://www.google.com/finance/quote/{ticker}:{gf_ex}",
+            "link_ibkr": f"https://www.interactivebrokers.com/en/trading/product-search.php#/?query={ticker}",
             "px":       round(float(d["px"]), 4) if d.get("px") else None,
             "cap_raw":  int(d["cap_raw"]) if d.get("cap_raw") else 0,
             "cap":      fmt_cap(d.get("cap_raw")),
@@ -405,6 +431,16 @@ canvas.sparkline{width:100%;height:40px;display:block}
 .detail-btn{display:block;width:100%;margin-top:10px;background:#0f172a;border:1px solid #334155;color:#94a3b8;border-radius:7px;padding:5px;font-size:.75rem;cursor:pointer;text-align:center;transition:all .12s}
 .detail-btn:hover{border-color:#3b82f6;color:#60a5fa}
 .no-data-overlay{position:absolute;inset:0;background:rgba(15,23,42,.6);display:flex;align-items:center;justify-content:center;border-radius:12px;font-size:.75rem;color:#64748b}
+.ex-ipo{font-size:.67rem;color:#475569;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* External links */
+.ext-links{display:flex;gap:7px;flex-wrap:wrap;padding:4px 22px 14px}
+.ext-link{display:inline-flex;align-items:center;gap:4px;padding:5px 11px;border-radius:7px;font-size:.76rem;font-weight:600;text-decoration:none;transition:all .15s;border:1px solid}
+.ext-link-yf  {background:#4b00821a;border-color:#7c3aed44;color:#a78bfa}
+.ext-link-yf:hover  {background:#4b008244;border-color:#7c3aed;color:#c4b5fd}
+.ext-link-gf  {background:#0622101a;border-color:#16a34a44;color:#4ade80}
+.ext-link-gf:hover  {background:#06221044;border-color:#16a34a;color:#86efac}
+.ext-link-ibkr{background:#051e2e1a;border-color:#0ea5e944;color:#38bdf8}
+.ext-link-ibkr:hover{background:#051e2e44;border-color:#0ea5e9;color:#7dd3fc}
 
 /* Modal */
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;align-items:center;justify-content:center;padding:16px}
@@ -505,6 +541,7 @@ canvas#mainChart{width:100%;height:260px;display:block;border-radius:8px;backgro
       <canvas id="mainChart"></canvas>
     </div>
     <div class="modal-metrics" id="mMetrics"></div>
+    <div class="ext-links" id="mLinks"></div>
     <div class="about-section" id="mAbout"></div>
   </div>
 </div>
@@ -677,6 +714,7 @@ function render(){
     const peStr   = d.pe  ? d.pe.toFixed(1) : "—";
     const fpeStr  = d.fpe ? d.fpe.toFixed(1) : "—";
     const betaStr = d.beta ? d.beta.toFixed(2) : "—";
+    const exIpo   = [d.ex_name||d.ex, d.ipo ? "IPO "+d.ipo : ""].filter(Boolean).join(" · ");
     const sparkId = "spark-"+d.t;
 
     return `<div class="card" onclick="openDetail('${d.t}')">
@@ -685,6 +723,7 @@ function render(){
         <span class="sector-badge" style="background:${bgCol};color:${fgCol}">${meta.label}</span>
       </div>
       <div class="company" title="${d.n}">${d.n}</div>
+      <div class="ex-ipo">${exIpo}</div>
       <div class="price-row">
         <span class="price">${px}</span>
         ${chgHtml}
@@ -813,6 +852,9 @@ function drawPriceChart(canvas, dates, prices, color){
     ctx.fillStyle = "#64748b66"; ctx.font = "9px sans-serif"; ctx.textAlign = "left";
     ctx.fillText("IPO ~"+dates[0], PAD.left+4, PAD.top+12);
   }
+  // Data source watermark
+  ctx.fillStyle = "#334155"; ctx.font = "9px sans-serif"; ctx.textAlign = "right";
+  ctx.fillText("Source: Yahoo Finance (via yfinance)", W - PAD.right, H - 4);
 }
 
 // ─── Detail Modal ─────────────────────────────────────────────────────────────
@@ -823,7 +865,7 @@ function openDetail(ticker){
 
   document.getElementById("mTitle").textContent = `${d.t}  —  ${d.n}`;
   document.getElementById("mSub").textContent   =
-    [d.ex, d.cur, d.country, meta.label].filter(Boolean).join("  ·  ");
+    [d.ex_name||d.ex, d.cur, d.country, meta.label].filter(Boolean).join("  ·  ");
 
   // Metrics
   const metrics = [
@@ -831,6 +873,8 @@ function openDetail(ticker){
     {l:"52W High", v: d.h52 ? "$"+fmtNum(d.h52) : "—", cls:""},
     {l:"52W Low",  v: d.l52 ? "$"+fmtNum(d.l52) : "—", cls:""},
     {l:"Mkt Cap",  v: d.cap||"—", cls:""},
+    {l:"Exchange", v: d.ex_name||(d.ex||"—"), cls:""},
+    {l:"IPO Date", v: d.ipo ? d.ipo+" (est.)" : "—", cls:""},
     {l:"P/E",      v: d.pe  ? d.pe.toFixed(1)  : "—", cls:""},
     {l:"Fwd P/E",  v: d.fpe ? d.fpe.toFixed(1) : "—", cls:""},
     {l:"EPS",      v: d.eps ? "$"+d.eps.toFixed(2) : "—", cls:""},
@@ -842,11 +886,16 @@ function openDetail(ticker){
                    cls: d.chg1m>0?"pos":d.chg1m<0?"neg":""},
     {l:"1Y %",     v: d.chg1y!==null ? (d.chg1y>0?"+":"")+d.chg1y.toFixed(2)+"%" : "—",
                    cls: d.chg1y>0?"pos":d.chg1y<0?"neg":""},
-    {l:"IPO ~",    v: d.ipo||"—", cls:""},
   ];
   document.getElementById("mMetrics").innerHTML = metrics.map(m=>
     `<div class="mcard"><div class="ml">${m.l}</div><div class="mv ${m.cls}">${m.v}</div></div>`
   ).join("");
+
+  // External links
+  document.getElementById("mLinks").innerHTML = `
+    <a class="ext-link ext-link-yf"   href="${d.link_yf}"   target="_blank" rel="noopener">📊 Yahoo Finance</a>
+    <a class="ext-link ext-link-gf"   href="${d.link_gf}"   target="_blank" rel="noopener">🔍 Google Finance</a>
+    <a class="ext-link ext-link-ibkr" href="${d.link_ibkr}" target="_blank" rel="noopener">💹 IBKR</a>`;
 
   // About
   const aboutEl = document.getElementById("mAbout");
@@ -889,11 +938,12 @@ function closeModal(e){
 // ─── Export CSV ───────────────────────────────────────────────────────────────
 function exportCSV(){
   const filtered = applyFilters();
-  const hdr = ["Ticker","Name","Sector","Exchange","Currency","Price","MktCap","PE","FwdPE","EPS","DivYield","Beta","1D%","1M%","1Y%","IPO","Country","Website"];
+  const hdr = ["Ticker","Name","Sector","Exchange","ExchangeName","Currency","Price","MktCap","PE","FwdPE","EPS","DivYield","Beta","1D%","1M%","1Y%","IPO","Country","Website","YahooFinance","GoogleFinance","IBKR"];
   const rows = filtered.map(d=>[
-    d.t, d.n, (SECTOR_META[d.s]||{}).label||d.s, d.ex, d.cur,
+    d.t, d.n, (SECTOR_META[d.s]||{}).label||d.s, d.ex, d.ex_name||d.ex||'', d.cur,
     d.px??'', d.cap_raw||'', d.pe??'', d.fpe??'', d.eps??'', d.dy??'', d.beta??'',
-    d.chg1d??'', d.chg1m??'', d.chg1y??'', d.ipo, d.country, d.web
+    d.chg1d??'', d.chg1m??'', d.chg1y??'', d.ipo||'', d.country||'', d.web||'',
+    d.link_yf||'', d.link_gf||'', d.link_ibkr||''
   ].map(v=>'"'+String(v).replace(/"/g,'""')+'"'));
   const csv = [hdr.join(","), ...rows.map(r=>r.join(","))].join("\n");
   const a = document.createElement("a");

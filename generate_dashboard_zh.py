@@ -125,6 +125,14 @@ canvas#mainChart{width:100%;height:260px;display:block;border-radius:8px;backgro
 .about-section h3{font-size:.78rem;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
 .about-section p{font-size:.82rem;color:#94a3b8;line-height:1.55}
 .about-section .website{margin-top:8px;font-size:.8rem}
+.ex-ipo{font-size:.65rem;color:#64748b;margin-top:2px;letter-spacing:.3px}
+.ext-links{display:flex;gap:8px;flex-wrap:wrap;padding:0 22px 14px}
+.ext-link{display:inline-block;padding:5px 12px;border-radius:6px;font-size:.75rem;font-weight:600;
+  text-decoration:none;transition:opacity .15s}
+.ext-link:hover{opacity:.8}
+.ext-link-yf{background:#6d28d9;color:#fff}
+.ext-link-gf{background:#0f766e;color:#fff}
+.ext-link-ibkr{background:#b45309;color:#fff}
 
 .empty{text-align:center;padding:60px;color:#475569}
 
@@ -200,6 +208,7 @@ canvas#mainChart{width:100%;height:260px;display:block;border-radius:8px;backgro
       <canvas id="mainChart"></canvas>
     </div>
     <div class="modal-metrics" id="mMetrics"></div>
+    <div class="ext-links" id="mLinks"></div>
     <div class="about-section" id="mAbout"></div>
   </div>
 </div>
@@ -359,6 +368,7 @@ function render(){
     const fpeStr  = d.fpe ? d.fpe.toFixed(1) : "—";
     const betaStr = d.beta ? d.beta.toFixed(2): "—";
     const sparkId = "spark-"+d.t;
+    const exIpo = [d.ex_name||d.ex, d.ipo ? "上市 "+d.ipo : ""].filter(Boolean).join(" · ");
 
     return `<div class="card" onclick="openDetail('${d.t}')">
       <div class="card-top">
@@ -366,6 +376,7 @@ function render(){
         <span class="sector-badge" style="background:${bgCol};color:${fgCol}">${meta.label}</span>
       </div>
       <div class="company" title="${d.n}">${d.n}</div>
+      ${exIpo ? `<div class="ex-ipo">${exIpo}</div>` : ""}
       <div class="price-row">
         <span class="price">${px}</span>
         ${chgHtml}
@@ -471,6 +482,9 @@ function drawPriceChart(canvas, dates, prices, color){
     ctx.fillStyle="#64748b66";ctx.font="9px sans-serif";ctx.textAlign="left";
     ctx.fillText("上市 ~"+dates[0],PAD.left+4,PAD.top+12);
   }
+
+  ctx.fillStyle="#33415566";ctx.font="9px sans-serif";ctx.textAlign="right";
+  ctx.fillText("数据来源：Yahoo Finance (via yfinance)", W - PAD.right, H - 4);
 }
 
 // ── 详情弹窗 ─────────────────────────────────────────────────────────────────
@@ -481,13 +495,15 @@ function openDetail(ticker){
 
   document.getElementById("mTitle").textContent=`${d.t}  —  ${d.n}`;
   document.getElementById("mSub").textContent=
-    [d.ex,d.cur,d.country,meta.label].filter(Boolean).join("  ·  ");
+    [d.ex_name||d.ex,d.cur,d.country,meta.label].filter(Boolean).join("  ·  ");
 
   const metrics=[
     {l:"现价",      v:d.px!==null?"$"+fmtNum(d.px):"—",            cls:""},
     {l:"52周最高",  v:d.h52?"$"+fmtNum(d.h52):"—",                 cls:""},
     {l:"52周最低",  v:d.l52?"$"+fmtNum(d.l52):"—",                 cls:""},
     {l:"市值",      v:d.cap||"—",                                   cls:""},
+    {l:"交易所",    v:d.ex_name||(d.ex||"—"),                       cls:""},
+    {l:"上市日期",  v:d.ipo?d.ipo+"（估）":"—",                     cls:""},
     {l:"市盈率",    v:d.pe?d.pe.toFixed(1):"—",                     cls:""},
     {l:"预期PE",    v:d.fpe?d.fpe.toFixed(1):"—",                   cls:""},
     {l:"每股收益",  v:d.eps?"$"+d.eps.toFixed(2):"—",               cls:""},
@@ -499,11 +515,15 @@ function openDetail(ticker){
                     cls:d.chg1m>0?"pos":d.chg1m<0?"neg":""},
     {l:"年涨跌",    v:d.chg1y!==null?(d.chg1y>0?"+":"")+d.chg1y.toFixed(2)+"%":"—",
                     cls:d.chg1y>0?"pos":d.chg1y<0?"neg":""},
-    {l:"上市约",    v:d.ipo||"—",                                   cls:""},
   ];
   document.getElementById("mMetrics").innerHTML=metrics.map(m=>
     `<div class="mcard"><div class="ml">${m.l}</div><div class="mv ${m.cls}">${m.v}</div></div>`
   ).join("");
+
+  document.getElementById("mLinks").innerHTML=`
+    <a class="ext-link ext-link-yf"   href="${d.link_yf}"   target="_blank" rel="noopener">📊 Yahoo Finance</a>
+    <a class="ext-link ext-link-gf"   href="${d.link_gf}"   target="_blank" rel="noopener">🔍 谷歌财经</a>
+    <a class="ext-link ext-link-ibkr" href="${d.link_ibkr}" target="_blank" rel="noopener">💹 IBKR</a>`;
 
   const aboutEl=document.getElementById("mAbout");
   aboutEl.innerHTML="";
@@ -542,11 +562,12 @@ function closeModal(e){
 // ── 导出 CSV ─────────────────────────────────────────────────────────────────
 function exportCSV(){
   const filtered=applyFilters();
-  const hdr=["代码","名称","板块","交易所","货币","现价","市值","市盈率","预期PE","每股收益","股息率","贝塔","日涨跌%","月涨跌%","年涨跌%","上市约","国家","官网"];
+  const hdr=["代码","名称","板块","交易所代码","交易所名称","货币","现价","市值","市盈率","预期PE","每股收益","股息率","贝塔","日涨跌%","月涨跌%","年涨跌%","上市约","国家","官网","Yahoo链接","谷歌财经链接","IBKR链接"];
   const rows=filtered.map(d=>[
-    d.t,d.n,(SECTOR_META[d.s]||{}).label||d.s,d.ex,d.cur,
+    d.t,d.n,(SECTOR_META[d.s]||{}).label||d.s,d.ex,d.ex_name||d.ex||"",d.cur,
     d.px??"",d.cap_raw||"",d.pe??"",d.fpe??"",d.eps??"",d.dy??"",d.beta??"",
-    d.chg1d??"",d.chg1m??"",d.chg1y??"",d.ipo,d.country,d.web
+    d.chg1d??"",d.chg1m??"",d.chg1y??"",d.ipo||"",d.country||"",d.web||"",
+    d.link_yf||"",d.link_gf||"",d.link_ibkr||""
   ].map(v=>'"'+String(v).replace(/"/g,'""')+'"'));
   const csv=[hdr.join(","),...rows.map(r=>r.join(","))].join("\n");
   const a=document.createElement("a");
