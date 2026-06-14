@@ -163,6 +163,7 @@ canvas#mainChart{width:100%;height:260px;display:block;border-radius:8px;backgro
     <input type="text" id="search" placeholder="搜索股票代码或公司名称…" oninput="onFilter()">
   </div>
   <select id="selExchange" onchange="onFilter()"><option value="">全部交易所</option></select>
+  <select id="selCountry" onchange="onFilter()"><option value="">全部国家/地区</option></select>
   <select id="selSort" onchange="onFilter()">
     <option value="ticker">代码</option>
     <option value="name">名称</option>
@@ -223,6 +224,7 @@ const state = {
   search:  "",
   sector:  "",
   exchange:"",
+  country: "",
   sort:    "ticker",
   sortDir: 1,
   type:    "all",
@@ -274,6 +276,17 @@ document.getElementById("genDate").textContent = "生成时间：" + STATS.gener
   });
 })();
 
+// 国家/地区下拉
+(function buildCountries(){
+  const countries = [...new Set(DATA.map(d=>d.country).filter(Boolean))].sort();
+  const sel = document.getElementById("selCountry");
+  countries.forEach(c=>{
+    const opt = document.createElement("option");
+    opt.value = c; opt.textContent = c;
+    sel.appendChild(opt);
+  });
+})();
+
 // ── 筛选逻辑 ─────────────────────────────────────────────────────────────────
 function applyFilters(){
   let res = [...DATA];
@@ -287,6 +300,7 @@ function applyFilters(){
   }
   if(state.sector)   res = res.filter(d=>d.s===state.sector);
   if(state.exchange) res = res.filter(d=>d.ex===state.exchange);
+  if(state.country)  res = res.filter(d=>d.country===state.country);
 
   if(state.type==="leveraged") res = res.filter(d=>d.s==="leveraged_etf");
   else if(state.type==="etf")  res = res.filter(d=>["etf_semi","etf_other","leveraged_etf"].includes(d.s));
@@ -318,6 +332,7 @@ function applyFilters(){
 function onFilter(){
   state.search   = document.getElementById("search").value;
   state.exchange = document.getElementById("selExchange").value;
+  state.country  = document.getElementById("selCountry").value;
   state.sort     = document.getElementById("selSort").value;
   render();
 }
@@ -370,7 +385,7 @@ function render(){
     const fpeStr  = d.fpe ? d.fpe.toFixed(1) : "—";
     const betaStr = d.beta ? d.beta.toFixed(2): "—";
     const sparkId = "spark-"+d.t;
-    const exIpo = [d.ex_name||d.ex, d.ipo ? "上市 "+d.ipo : ""].filter(Boolean).join(" · ");
+    const exIpo = [d.ex_name||d.ex, d.country, d.ipo ? "上市 "+d.ipo : ""].filter(Boolean).join(" · ");
 
     return `<div class="card" onclick="openDetail('${d.t}')">
       <div class="card-top">

@@ -496,6 +496,7 @@ canvas#mainChart{width:100%;height:260px;display:block;border-radius:8px;backgro
     <input type="text" id="search" placeholder="Search ticker or company…" oninput="onFilter()">
   </div>
   <select id="selExchange" onchange="onFilter()"><option value="">All Exchanges</option></select>
+  <select id="selCountry" onchange="onFilter()"><option value="">All Countries</option></select>
   <select id="selSort" onchange="onFilter()">
     <option value="ticker">Ticker</option>
     <option value="name">Name</option>
@@ -558,6 +559,7 @@ const state = {
   search:  "",
   sector:  "",
   exchange:"",
+  country: "",
   sort:    "ticker",
   sortDir: 1,      // 1=asc, -1=desc
   type:    "all",  // all|stock|etf|leveraged
@@ -613,6 +615,17 @@ document.getElementById("genDate").textContent = "Generated: " + STATS.generated
   });
 })();
 
+// Populate country dropdown
+(function buildCountries(){
+  const countries = [...new Set(DATA.map(d=>d.country).filter(Boolean))].sort();
+  const sel = document.getElementById("selCountry");
+  countries.forEach(c=>{
+    const opt = document.createElement("option");
+    opt.value = c; opt.textContent = c;
+    sel.appendChild(opt);
+  });
+})();
+
 // ─── Filters ─────────────────────────────────────────────────────────────────
 function applyFilters(){
   let res = [...DATA];
@@ -627,6 +640,7 @@ function applyFilters(){
   }
   if(state.sector)   res = res.filter(d=>d.s === state.sector);
   if(state.exchange) res = res.filter(d=>d.ex === state.exchange);
+  if(state.country)  res = res.filter(d=>d.country === state.country);
 
   if(state.type === "leveraged") res = res.filter(d=>d.s === "leveraged_etf");
   else if(state.type === "etf")  res = res.filter(d=>["etf_semi","etf_other","leveraged_etf"].includes(d.s));
@@ -659,6 +673,7 @@ function applyFilters(){
 function onFilter(){
   state.search   = document.getElementById("search").value;
   state.exchange = document.getElementById("selExchange").value;
+  state.country  = document.getElementById("selCountry").value;
   state.sort     = document.getElementById("selSort").value;
   render();
 }
@@ -716,7 +731,7 @@ function render(){
     const peStr   = d.pe  ? d.pe.toFixed(1) : "—";
     const fpeStr  = d.fpe ? d.fpe.toFixed(1) : "—";
     const betaStr = d.beta ? d.beta.toFixed(2) : "—";
-    const exIpo   = [d.ex_name||d.ex, d.ipo ? "IPO "+d.ipo : ""].filter(Boolean).join(" · ");
+    const exIpo   = [d.ex_name||d.ex, d.country, d.ipo ? "IPO "+d.ipo : ""].filter(Boolean).join(" · ");
     const sparkId = "spark-"+d.t;
 
     return `<div class="card" onclick="openDetail('${d.t}')">
