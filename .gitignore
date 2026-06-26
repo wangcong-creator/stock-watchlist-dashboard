@@ -2,3 +2,4 @@ stock_cache.json
 __pycache__/
 *.py[cod]
 *.png
+.venv/
