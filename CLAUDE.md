@@ -78,3 +78,27 @@ Defined in `SECTOR_MAP` dict at the top of `generate_dashboard.py`. Each ticker 
 | `hardware_other` | Hardware & Other |
 
 To reclassify a ticker, change its value in `SECTOR_MAP` and re-run the script. No re-fetch is needed for sector changes — the dashboard is regenerated from cache.
+
+## Decay Charts (`generate_decay_charts.py`)
+
+Generates `decay_charts.html` — leveraged ETF volatility-decay comparison charts (daily-reset 2× vs naive 2×) for each leveraged ETF pair from its IPO date.
+
+```
+.venv/bin/python3 generate_decay_charts.py
+```
+
+**IMPORTANT — Deployment target:** The decay charts have a **separate** GitHub repository: `wangcong-creator/etf-decay-charts` (live at https://wangcong-creator.github.io/etf-decay-charts/). The local git remote points to `stock-watchlist-dashboard` — do NOT push decay chart updates there.
+
+To deploy after regenerating `decay_charts.html`, upload it as `index.html` on the `main` branch via the GitHub API:
+
+```
+# 1. Get current file SHA
+gh api repos/wangcong-creator/etf-decay-charts/contents/index.html --jq '.sha'
+
+# 2. Upload new content
+base64 -i decay_charts.html | gh api repos/wangcong-creator/etf-decay-charts/contents/index.html \
+  --method PUT \
+  --field message="<commit message>" \
+  --field sha="<sha from step 1>" \
+  --field content=@-
+```

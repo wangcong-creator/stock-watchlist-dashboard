@@ -298,22 +298,28 @@ function redraw() {
   const o2 = Array.from(naive, guard);
   const o3 = Array.from(dr,    guard);
 
+  // Log y-axis min: avoid extending down to 0.1× when data never dips below 0.3×
+  let yAxisMin = undefined;
+  if (useLog) {
+    const allMin = Math.min(...o1, ...o2, ...o3);
+    yAxisMin = allMin >= 0.3 ? 0.3 : allMin >= 0.03 ? 0.1 : 0.01;
+  }
+
+  // Adaptive title: shorten on narrow viewports
+  const narrow = window.innerWidth < 520;
+  const titleText = narrow
+    ? `${etf}  ·  ${d.und}  ·  ${startDate}`
+    : `${etf}  ·  正股 ${d.und}  ·  起点 ${startDate}  →  ${d.latest}  (${dates.length} 交易日)`;
+
   chart.setOption({
     backgroundColor: "#0d1117",
     animation: false,
-    title: [
-      {
-        text: `${etf}  ·  正股 ${d.und}  ·  起点 ${startDate}  →  ${d.latest}  (${dates.length} 交易日)`,
-        textStyle: { color: "#e5e7eb", fontSize: 12, fontWeight: "bold" },
-        top: 6, left: 14,
-      },
-      {
-        text: `假设费率 ${(d.fee * 100).toFixed(2)}%/年  ·  未计 swap 融资成本与买卖价差`,
-        textStyle: { color: "#6b7280", fontSize: 9, fontWeight: "normal" },
-        top: 26, left: 14,
-      },
-    ],
-    grid: { top: 56, right: 96, bottom: 46, left: 64 },
+    title: [{
+      text: titleText,
+      textStyle: { color: "#e5e7eb", fontSize: 12, fontWeight: "bold" },
+      top: 10, left: 14,
+    }],
+    grid: { top: 44, right: 96, bottom: 46, left: 64 },
     xAxis: {
       type: "category",
       data: dates,
@@ -325,6 +331,7 @@ function redraw() {
     yAxis: {
       type: useLog ? "log" : "value",
       logBase: 10,
+      min: yAxisMin,
       name: useLog ? "净值（对数轴，起点=1）" : "净值（起点=1）",
       nameTextStyle: { color: "#4b5563", fontSize: 8.5, padding: [0, 0, 0, 54] },
       axisLine:  { lineStyle: { color: "#30363d" } },
@@ -378,9 +385,48 @@ function redraw() {
     ],
   }, { notMerge: true });
 
+  // Post-render: collision-avoid the three end labels using pixel positions
+  setTimeout(() => {
+    try {
+      const pts = [
+        { idx: 0, val: guard(fO), color: "#9ca3af", text: fmtPct(fO - 1) },
+        { idx: 1, val: guard(fN), color: "#f59e0b", text: fmtPct(fN - 1) },
+        { idx: 2, val: guard(fD), color: "#2dd4bf", text: fmtPct(fD - 1) },
+      ];
+      pts.forEach(p => { p.py = chart.convertToPixel({ yAxisIndex: 0 }, p.val); });
+
+      // Sort by pixel-y descending (bottom of screen first)
+      pts.sort((a, b) => b.py - a.py);
+
+      // Two passes: push upper labels up when gap < 16 px
+      const minPx = 16;
+      for (let pass = 0; pass < 3; pass++) {
+        for (let i = 0; i < pts.length - 1; i++) {
+          const gap = pts[i].py - pts[i + 1].py; // positive = i is lower
+          if (gap < minPx) {
+            const adj = (minPx - gap) / 2;
+            pts[i].py     += adj;
+            pts[i + 1].py -= adj;
+          }
+        }
+      }
+
+      // Apply dy offset = adjusted_py - original_py
+      const seriesUpdates = pts.map(p => ({
+        endLabel: {
+          offset: [0, p.py - chart.convertToPixel({ yAxisIndex: 0 }, p.val)],
+        },
+      }));
+      // Re-order by original series index
+      const ordered = [null, null, null];
+      pts.forEach(p => { ordered[p.idx] = seriesUpdates[pts.indexOf(p)]; });
+      chart.setOption({ series: ordered });
+    } catch (_) { /* ignore if chart disposed */ }
+  }, 30);
+
   document.getElementById("disclaimer").textContent =
-    `数据: yfinance ${d.und} 日线收盘价 ${d.dates[0]} 至 ${d.latest}（${d.dates.length} 个交易日）。` +
-    "每日重置模拟不含 swap 融资成本及买卖价差，实际 ETF 衰减通常更大。仅供学习参考，非投资建议。";
+    `假设费率 ${(d.fee * 100).toFixed(2)}%/年（未计 swap 融资成本及买卖价差）  ·  ` +
+    `数据: yfinance ${d.und} 日线收盘价 ${d.dates[0]} 至 ${d.latest}（${d.dates.length} 个交易日）  ·  仅供学习参考，非投资建议。`;
 }
 
 // ── ETF switcher ──────────────────────────────────────────────────────────────
