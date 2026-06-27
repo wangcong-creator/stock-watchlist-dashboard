@@ -6,7 +6,7 @@ Embeds raw price data as JSON in the HTML; the browser does all slicing,
 normalisation, and rendering via ECharts.  No server required.
 
 Usage:
-  .venv/bin/python3 generate_interactive_charts.py          # all 22 ETFs
+  .venv/bin/python3 generate_interactive_charts.py          # all 43 ETFs
   .venv/bin/python3 generate_interactive_charts.py MULL     # one ETF (verify)
 Output: index.html
 """
@@ -22,22 +22,47 @@ warnings.filterwarnings("ignore")
 # ── Config ────────────────────────────────────────────────────────────────────
 
 ETF_MAP = {
+    # ── Tier-1: original 22 ──────────────────────────────────────────────────
     "GGLL": "GOOG", "ARMG": "ARM",  "MRVU": "MRVL", "NVDL": "NVDA",
     "AMDL": "AMD",  "AVL":  "AVGO", "INTW": "INTC",  "QCMU": "QCOM",
     "TXNU": "TXN",  "ONX":  "ON",   "SNXX": "SNDK",  "MULL": "MU",
     "TSMX": "TSM",  "ASMU": "ASML", "LRCU": "LRCX",  "KLAG": "KLAC",
     "AMAU": "AMAT", "DLLL": "DELL", "LNOK": "NOK",
     "QLD":  "QQQ",  "SSO":  "SPY",  "DDM":  "DIA",
+    # ── Tier-2: 21 new additions ─────────────────────────────────────────────
+    # Holdings / 持仓
+    "TSLL": "TSLA", "CRCG": "CRCL", "SPAL": "SPCX",
+    # Crypto & fintech / 加密金融
+    "MSTU": "MSTR", "CONL": "COIN", "HOOX": "HOOD",
+    # AI · computing · space / AI算力·航天
+    "NBIL": "NBIS", "CRWG": "CRWV", "ASUP": "ASTS",
+    "RKLX": "RKLB", "CBRX": "CBRS", "LABX": "ALAB", "CSEX": "CLS",
+    # Semiconductor / 半导体
+    "COHX": "COHR", "LITX": "LITE", "NXPX": "NXPI",
+    "MCHU": "MCHP", "STXX": "STX",  "WDCX": "WDC",
+    "IREX": "IREN", "LEUX": "LEU",
 }
 
 ETF_FEES = {
+    # ── Tier-1 ───────────────────────────────────────────────────────────────
     "NVDL": 0.0115, "AMDL": 0.0115, "MULL": 0.0115, "INTW": 0.0115,
     "KLAG": 0.0115, "AMAU": 0.0115, "DLLL": 0.0115, "ARMG": 0.0115,
     "GGLL": 0.0095, "MRVU": 0.0095, "AVL":  0.0095, "QCMU": 0.0095,
     "TXNU": 0.0095, "TSMX": 0.0095, "ASMU": 0.0095, "LRCU": 0.0095,
     "ONX":  0.0105, "SNXX": 0.0105, "LNOK": 0.0090,
     "QLD":  0.0095, "SSO":  0.0089, "DDM":  0.0095,
+    # ── Tier-2 ───────────────────────────────────────────────────────────────
+    "TSLL": 0.0106, "CRCG": 0.0075, "SPAL": 0.0150,
+    "MSTU": 0.0129, "CONL": 0.0115, "HOOX": 0.0130,
+    "NBIL": 0.0115, "CRWG": 0.0077, "ASUP": 0.0105,
+    "RKLX": 0.0131, "CBRX": 0.0105, "LABX": 0.0105, "CSEX": 0.0105,
+    "COHX": 0.0105, "LITX": 0.0105, "NXPX": 0.0105,
+    "MCHU": 0.0105, "STXX": 0.0105, "WDCX": 0.0105,
+    "IREX": 0.0105, "LEUX": 0.0105,
 }
+
+# Underlyings unavailable in yfinance (show graceful placeholder)
+_UNAVAILABLE_UND = {"SPCX"}
 
 LEVERAGE = 2.0
 
@@ -54,6 +79,11 @@ def _extract_close(hist: pd.DataFrame, ticker: str) -> pd.Series:
 
 def fetch_data(etf: str, underlying: str):
     """Returns (data_dict, None) or (None, error_str)."""
+    if underlying in _UNAVAILABLE_UND:
+        msg = f"{underlying} 数据不可得（yfinance 不支持私有/特殊载体）"
+        print(f"\n  ⚠  {etf}: {msg}", flush=True)
+        print(f"     后续可改用 IBKR 合约数据补充。", flush=True)
+        return None, msg
     try:
         etf_hist  = yf.download(etf, period="max", auto_adjust=True, progress=False)
         etf_close = _extract_close(etf_hist, etf)
