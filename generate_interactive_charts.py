@@ -298,11 +298,16 @@ function redraw() {
   const o2 = Array.from(naive, guard);
   const o3 = Array.from(dr,    guard);
 
-  // Log y-axis min: avoid extending down to 0.1× when data never dips below 0.3×
-  let yAxisMin = undefined;
+  // Log y-axis bounds: 12% log-space padding on each side so data fills the chart
+  let yAxisMin = undefined, yAxisMax = undefined;
   if (useLog) {
     const allMin = Math.min(...o1, ...o2, ...o3);
-    yAxisMin = allMin >= 0.3 ? 0.3 : allMin >= 0.03 ? 0.1 : 0.01;
+    const allMax = Math.max(...o1, ...o2, ...o3);
+    const lMin = Math.log10(Math.max(allMin, 1e-9));
+    const lMax = Math.log10(allMax);
+    const pad  = (lMax - lMin) * 0.12;
+    yAxisMin = Math.pow(10, lMin - pad);
+    yAxisMax = Math.pow(10, lMax + pad);
   }
 
   // Adaptive title: shorten on narrow viewports
@@ -332,6 +337,7 @@ function redraw() {
       type: useLog ? "log" : "value",
       logBase: 10,
       min: yAxisMin,
+      max: yAxisMax,
       name: useLog ? "净值（对数轴，起点=1）" : "净值（起点=1）",
       nameTextStyle: { color: "#4b5563", fontSize: 8.5, padding: [0, 0, 0, 54] },
       axisLine:  { lineStyle: { color: "#30363d" } },
