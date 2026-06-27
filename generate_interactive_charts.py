@@ -61,6 +61,51 @@ ETF_FEES = {
     "IREX": 0.0105, "LEUX": 0.0105,
 }
 
+# ── Sector mapping ────────────────────────────────────────────────────────────
+
+SECTOR_MAP = {
+    # 芯片设计 (Fabless / IC design)
+    "NVDL": "chip_design", "AMDL": "chip_design", "AVL":  "chip_design",
+    "ARMG": "chip_design", "QCMU": "chip_design", "TXNU": "chip_design",
+    "NXPX": "chip_design", "MCHU": "chip_design", "CBRX": "chip_design", "ONX":  "chip_design",
+    # 晶圆代工 / IDM
+    "TSMX": "foundry",    "INTW": "foundry",
+    # 制造设备
+    "LRCU": "equipment",  "KLAG": "equipment",  "ASMU": "equipment",  "AMAU": "equipment",
+    # 存储
+    "MULL": "memory",     "SNXX": "memory",     "STXX": "memory",     "WDCX": "memory",
+    # 光互连 / 光子
+    "MRVU": "optical",    "COHX": "optical",    "LITX": "optical",
+    "LABX": "optical",    "LNOK": "optical",
+    # 服务器 / 系统组装
+    "DLLL": "server",     "CSEX": "server",
+    # 云 / 算力
+    "GGLL": "cloud",      "NBIL": "cloud",      "CRWG": "cloud",
+    # 航天 / 国防
+    "SPAL": "space",      "ASUP": "space",      "RKLX": "space",      "LEUX": "space",
+    # 加密 / 金融科技
+    "MSTU": "crypto",     "CONL": "crypto",     "HOOX": "crypto",
+    "CRCG": "crypto",     "IREX": "crypto",
+    # 应用 / 终端
+    "TSLL": "consumer",
+    # 宽基指数
+    "QLD":  "index",      "SSO":  "index",      "DDM":  "index",
+}
+
+SECTOR_LABELS = [
+    ("chip_design", "芯片设计"),
+    ("foundry",     "晶圆代工·IDM"),
+    ("equipment",   "制造设备"),
+    ("memory",      "存储"),
+    ("optical",     "光互连·光子"),
+    ("server",      "服务器·系统"),
+    ("cloud",       "云·算力"),
+    ("space",       "航天·国防"),
+    ("crypto",      "加密·金融科技"),
+    ("consumer",    "应用·终端"),
+    ("index",       "宽基指数"),
+]
+
 # Underlyings unavailable in yfinance (show graceful placeholder)
 _UNAVAILABLE_UND = {"SPCX"}
 
@@ -198,8 +243,17 @@ _HTML = '''\
              font-variant-numeric:tabular-nums}
     .hint{color:#484f58;font-size:.68rem}
 
+    /* ── Sector filter bar ── */
+    .sector-bar{flex-shrink:0;display:flex;gap:5px;flex-wrap:wrap;
+                padding:4px 16px;border-bottom:1px solid #21262d;background:#0d1117}
+    .sector-chip{background:transparent;border:1px solid #30363d;color:#8b949e;
+                 padding:2px 10px;border-radius:12px;cursor:pointer;font-size:.72rem;
+                 font-family:inherit;transition:all .15s;white-space:nowrap}
+    .sector-chip:hover{border-color:#2dd4bf;color:#2dd4bf}
+    .sector-chip.active{background:#0d2a2a;border-color:#2dd4bf;color:#2dd4bf;font-weight:600}
+
     @media(max-width:600px){
-      header,.controls,.nav-bar{padding-left:10px;padding-right:10px}
+      header,.controls,.sector-bar,.nav-bar{padding-left:10px;padding-right:10px}
       .controls{gap:7px}
     }
   </style>
@@ -213,6 +267,10 @@ _HTML = '''\
       __PILLS__
     </div>
   </header>
+
+  <div class="sector-bar">
+    __SECTOR_CHIPS__
+  </div>
 
   <div class="controls">
     <label>起始日期：</label>
@@ -244,10 +302,12 @@ _HTML = '''\
 const DATA      = __DATA_JSON__;
 const ETF_ORDER = __ETF_ORDER_JSON__;
 const N         = ETF_ORDER.length;
+const SECTORS   = __SECTORS_JSON__;
 
 // Per-ETF remembered start date (survives ETF switches)
 const STATE = {};
 let cur = 0, chart = null;
+let visibleOrder = [...ETF_ORDER]; // current filtered subset (all by default)
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function fmtPct(v) {
@@ -287,7 +347,7 @@ function compute(prices, si, fee) {
 
 // ── Redraw ────────────────────────────────────────────────────────────────────
 function redraw() {
-  const etf = ETF_ORDER[cur];
+  const etf = visibleOrder[cur];
   const d   = DATA[etf];
 
   // Error / placeholder panel
@@ -467,14 +527,18 @@ function redraw() {
 
 // ── ETF switcher ──────────────────────────────────────────────────────────────
 function show(i) {
+  const n = visibleOrder.length;
+  if (!n) return;
   const pills = document.querySelectorAll(".pill");
-  pills[cur].classList.remove("active");
-  cur = ((i % N) + N) % N;
-  pills[cur].classList.add("active");
-  pills[cur].scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
-  document.getElementById("counter").innerHTML = (cur + 1) + "&nbsp;/&nbsp;" + N;
+  pills.forEach(p => p.classList.remove("active"));
+  cur = ((i % n) + n) % n;
+  const etf = visibleOrder[cur];
+  const pi  = ETF_ORDER.indexOf(etf);
+  pills[pi].classList.add("active");
+  pills[pi].scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+  document.getElementById("counter").innerHTML = (cur + 1) + "&nbsp;/&nbsp;" + n;
 
-  const etf = ETF_ORDER[cur], d = DATA[etf];
+  const d = DATA[etf];
   const input = document.getElementById("dateInput");
   if (d && !d.error) {
     input.min   = d.dates[0];
@@ -485,10 +549,24 @@ function show(i) {
   redraw();
 }
 
+// ── Sector filter ─────────────────────────────────────────────────────────────
+function setFilter(sectorKey) {
+  visibleOrder = sectorKey
+    ? ETF_ORDER.filter(e => SECTORS[e] === sectorKey)
+    : [...ETF_ORDER];
+  document.querySelectorAll(".pill").forEach((pill, i) => {
+    pill.style.display = (!sectorKey || SECTORS[ETF_ORDER[i]] === sectorKey) ? "" : "none";
+  });
+  document.querySelectorAll(".sector-chip").forEach(chip => {
+    chip.classList.toggle("active", chip.dataset.sector === sectorKey);
+  });
+  show(0);
+}
+
 // ── Preset buttons ────────────────────────────────────────────────────────────
 document.querySelectorAll(".preset-btn").forEach(btn => {
   btn.addEventListener("click", () => {
-    const d = DATA[ETF_ORDER[cur]];
+    const d = DATA[visibleOrder[cur]];
     if (!d || d.error) return;
     const input = document.getElementById("dateInput");
     const p = btn.dataset.p;
@@ -511,7 +589,16 @@ document.querySelectorAll(".preset-btn").forEach(btn => {
 
 // ── Wire-up ───────────────────────────────────────────────────────────────────
 document.getElementById("dateInput").addEventListener("change", redraw);
-document.querySelectorAll(".pill").forEach((p, i) => p.addEventListener("click", () => show(i)));
+document.querySelectorAll(".pill").forEach((p, i) => {
+  const etf = ETF_ORDER[i];
+  p.addEventListener("click", () => {
+    const vi = visibleOrder.indexOf(etf);
+    if (vi >= 0) show(vi);
+  });
+});
+document.querySelectorAll(".sector-chip").forEach(chip => {
+  chip.addEventListener("click", () => setFilter(chip.dataset.sector));
+});
 document.getElementById("prev").addEventListener("click", () => show(cur - 1));
 document.getElementById("next").addEventListener("click", () => show(cur + 1));
 document.addEventListener("keydown", e => {
@@ -537,6 +624,20 @@ def build_pills(etf_order: list) -> str:
         und = ETF_MAP[etf]
         parts.append(f'<button class="{cls}" title="{und}">{etf}</button>')
     return "\n      ".join(parts)
+
+
+def build_sector_chips(etf_order: list) -> str:
+    counts: dict = {}
+    for etf in etf_order:
+        s = SECTOR_MAP.get(etf, "")
+        if s:
+            counts[s] = counts.get(s, 0) + 1
+    total = len(etf_order)
+    parts = [f'<button class="sector-chip active" data-sector="">全部 ({total})</button>']
+    for key, label in SECTOR_LABELS:
+        n = counts.get(key, 0)
+        parts.append(f'<button class="sector-chip" data-sector="{key}">{label} ({n})</button>')
+    return "\n    ".join(parts)
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -570,15 +671,19 @@ def main():
                 verify(etf, data)
 
     # Assemble HTML
-    pills_html     = build_pills(etf_order)
-    data_json      = json.dumps(all_data, ensure_ascii=False, separators=(",", ":"))
-    etf_order_json = json.dumps(etf_order)
+    pills_html        = build_pills(etf_order)
+    sector_chips_html = build_sector_chips(etf_order)
+    data_json         = json.dumps(all_data, ensure_ascii=False, separators=(",", ":"))
+    etf_order_json    = json.dumps(etf_order)
+    sectors_json      = json.dumps(SECTOR_MAP, ensure_ascii=False)
 
     html = (
         _HTML
         .replace("__PILLS__",          pills_html)
+        .replace("__SECTOR_CHIPS__",   sector_chips_html)
         .replace("__DATA_JSON__",      data_json)
         .replace("__ETF_ORDER_JSON__", etf_order_json)
+        .replace("__SECTORS_JSON__",   sectors_json)
     )
 
     out = "index.html"
