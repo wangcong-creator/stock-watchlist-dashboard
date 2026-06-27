@@ -47,6 +47,9 @@ ETF_MAP = {
     "AMAU": "AMAT",
     "DLLL": "DELL",
     "LNOK": "NOK",
+    "QLD":  "QQQ",
+    "SSO":  "SPY",
+    "DDM":  "DIA",
 }
 
 # Annual expense-ratio approximations (decimal)
@@ -63,6 +66,8 @@ ETF_FEES = {
     "ONX":  0.0105, "SNXX": 0.0105,
     # Defiance Daily Target 2× (~0.90 %/yr)
     "LNOK": 0.0090,
+    # ProShares Ultra 2× index ETFs
+    "QLD":  0.0095, "SSO":  0.0089, "DDM":  0.0095,
 }
 
 LEVERAGE  = 2.0
@@ -553,7 +558,8 @@ _PANEL_FAIL = """\
 def main():
     sep = "=" * 64
     print(sep)
-    print("  Leveraged ETF Decay Chart Generator  (19 pairs)")
+    total_pairs = len(ETF_MAP)
+    print(f"  Leveraged ETF Decay Chart Generator  ({total_pairs} pairs)")
     print(sep)
     print(f"  CJK font: {'enabled' if HAS_CJK else 'not found — using system default'}")
     print()
@@ -564,7 +570,7 @@ def main():
 
     for idx, (etf, und) in enumerate(ETF_MAP.items(), 1):
         fee = ETF_FEES.get(etf, 0.0115)
-        print(f"[{idx:2d}/19] {etf} → {und}  (fee {fee*100:.2f}%/yr)")
+        print(f"[{idx:2d}/{total_pairs}] {etf} → {und}  (fee {fee*100:.2f}%/yr)")
 
         etf_px, stock_px, ipo = fetch_pair(etf, und)
 
@@ -608,7 +614,7 @@ def main():
 
     print()
     print(sep)
-    print(f"  Done!  {success_count}/{len(ETF_MAP)} charts generated  →  {out}")
+    print(f"  Done!  {success_count}/{total_pairs} charts generated  →  {out}")
     print(f"  Open:  open {out}")
     print(sep)
 
