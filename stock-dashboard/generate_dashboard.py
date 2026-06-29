@@ -16,9 +16,10 @@ from pathlib import Path
 # ══════════════════════════════════════════════════════════════════════════════
 # 1  CONSTANTS
 # ══════════════════════════════════════════════════════════════════════════════
-STOCK_LIST_FILE   = "stock list.txt"
-CACHE_FILE        = "stock_cache.json"
-OUTPUT_FILE       = "dashboard.html"
+_HERE = Path(__file__).parent
+STOCK_LIST_FILE   = str(_HERE / "stock list.txt")
+CACHE_FILE        = str(_HERE / "stock_cache.json")
+OUTPUT_FILE       = str(_HERE / "dashboard.html")
 CACHE_MAX_AGE_HRS = 24
 CHART_PERIOD      = "max"   # "max" = from IPO; also "10y", "5y", "1y"
 RATE_LIMIT_DELAY  = 0.4     # seconds between API calls

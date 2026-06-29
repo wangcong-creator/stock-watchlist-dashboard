@@ -13,6 +13,7 @@ Output: index.html
 import json
 import sys
 import warnings
+from pathlib import Path
 
 import pandas as pd
 import yfinance as yf
@@ -931,7 +932,7 @@ def main():
         .replace("__SECTORS_JSON__",   sectors_json)
     )
 
-    out = "index.html"
+    out = str(Path(__file__).parent / "index.html")
     with open(out, "w", encoding="utf-8") as fh:
         fh.write(html)
 

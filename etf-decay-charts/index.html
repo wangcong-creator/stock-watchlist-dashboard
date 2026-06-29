@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>杠杆 ETF 衰减对比图（交互版）</title>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%;background:#0d1117;color:#e5e7eb;
+              font-family:-apple-system,"PingFang SC",sans-serif;overflow:hidden}
+    .app{display:flex;flex-direction:column;height:100vh}
+
+    /* ── Header ── */
+    header{flex-shrink:0;padding:8px 16px 6px;border-bottom:1px solid #21262d;
+           background:#161b22;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+    header h1{font-size:.92rem;color:#f3f4f6;white-space:nowrap}
+    .pills{display:flex;flex-wrap:wrap;gap:4px;flex:1}
+    .pill{background:transparent;border:1px solid #30363d;color:#8b949e;
+          padding:2px 10px;border-radius:12px;cursor:pointer;font-size:.75rem;
+          transition:all .15s;white-space:nowrap;font-family:inherit}
+    .pill:hover{border-color:#58a6ff;color:#58a6ff}
+    .pill.active{background:#1c3452;border-color:#58a6ff;color:#79c0ff;font-weight:600}
+
+    /* ── Controls ── */
+    .controls{flex-shrink:0;display:flex;align-items:center;gap:10px;
+              padding:5px 16px;border-bottom:1px solid #21262d;
+              background:#161b22;flex-wrap:wrap}
+    .controls label{color:#8b949e;font-size:.78rem;white-space:nowrap}
+    #dateInput{background:#21262d;border:1px solid #30363d;color:#e5e7eb;
+               padding:3px 8px;border-radius:5px;font-size:.8rem;font-family:inherit;
+               cursor:pointer}
+    #dateInput:focus{outline:none;border-color:#58a6ff}
+    .presets{display:flex;gap:5px;flex-wrap:wrap}
+    .preset-btn{background:transparent;border:1px solid #30363d;color:#8b949e;
+                padding:2px 9px;border-radius:5px;cursor:pointer;font-size:.74rem;
+                font-family:inherit;transition:all .15s}
+    .preset-btn:hover{border-color:#2dd4bf;color:#2dd4bf}
+    #clamp-note{color:#f59e0b;font-size:.73rem;display:none}
+
+    /* ── Dual chart area ── */
+    .charts-row{flex:1;min-height:0;display:flex;gap:0}
+    #chart-left{flex:1;min-width:0}
+    .chart-divider{width:1px;background:#21262d;flex-shrink:0}
+    #chart-right{flex:1;min-width:0}
+
+    /* ── Disclaimer ── */
+    .disclaimer{flex-shrink:0;padding:3px 16px;font-size:.67rem;color:#4b5563;
+                border-top:1px solid #21262d;white-space:nowrap;
+                overflow:hidden;text-overflow:ellipsis}
+
+    /* ── Nav bar ── */
+    .nav-bar{flex-shrink:0;display:flex;align-items:center;gap:12px;
+             padding:5px 16px;border-top:1px solid #21262d;
+             background:#161b22;justify-content:center}
+    .nav-btn{background:#21262d;border:1px solid #30363d;color:#c9d1d9;
+             padding:4px 16px;border-radius:5px;cursor:pointer;font-size:.8rem;
+             font-family:inherit;transition:background .15s}
+    .nav-btn:hover{background:#2d333b}
+    .counter{color:#8b949e;font-size:.8rem;min-width:50px;text-align:center;
+             font-variant-numeric:tabular-nums}
+    .hint{color:#484f58;font-size:.68rem}
+
+    /* ── Sector filter bar ── */
+    .sector-bar{flex-shrink:0;display:flex;gap:5px;flex-wrap:wrap;
+                padding:4px 16px;border-bottom:1px solid #21262d;background:#0d1117}
+    .sector-chip{background:transparent;border:1px solid #30363d;color:#8b949e;
+                 padding:2px 10px;border-radius:12px;cursor:pointer;font-size:.72rem;
+                 font-family:inherit;transition:all .15s;white-space:nowrap}
+    .sector-chip:hover{border-color:#2dd4bf;color:#2dd4bf}
+    .sector-chip.active{background:#0d2a2a;border-color:#2dd4bf;color:#2dd4bf;font-weight:600}
+
+    @media(max-width:600px){
+      header,.controls,.sector-bar,.nav-bar{padding-left:10px;padding-right:10px}
+      .controls{gap:7px}
+      .charts-row{flex-direction:column}
+      .chart-divider{width:100%;height:1px}
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <h1>杠杆 ETF 衰减对比图</h1>
+    <div class="pills" id="pills">
+      <button class="pill active" title="GOOG">GGLL</button>
+      <button class="pill" title="ARM">ARMG</button>
+      <button class="pill" title="MRVL">MRVU</button>
+      <button class="pill" title="NVDA">NVDL</button>
+      <button class="pill" title="AMD">AMDL</button>
+      <button class="pill" title="AVGO">AVL</button>
+      <button class="pill" title="INTC">INTW</button>
+      <button class="pill" title="QCOM">QCMU</button>
+      <button class="pill" title="TXN">TXNU</button>
+      <button class="pill" title="ON">ONX</button>
+      <button class="pill" title="SNDK">SNXX</button>
+      <button class="pill" title="MU">MULL</button>
+      <button class="pill" title="TSM">TSMX</button>
+      <button class="pill" title="ASML">ASMU</button>
+      <button class="pill" title="LRCX">LRCU</button>
+      <button class="pill" title="KLAC">KLAG</button>
+      <button class="pill" title="AMAT">AMAU</button>
+      <button class="pill" title="DELL">DLLL</button>
+      <button class="pill" title="NOK">LNOK</button>
+      <button class="pill" title="QQQ">QLD</button>
+      <button class="pill" title="SPY">SSO</button>
+      <button class="pill" title="DIA">DDM</button>
+      <button class="pill" title="TSLA">TSLL</button>
+      <button class="pill" title="CRCL">CRCG</button>
+      <button class="pill" title="SPCX">SPAL</button>
+      <button class="pill" title="MSTR">MSTU</button>
+      <button class="pill" title="COIN">CONL</button>
+      <button class="pill" title="HOOD">HOOX</button>
+      <button class="pill" title="NBIS">NBIL</button>
+      <button class="pill" title="CRWV">CRWG</button>
+      <button class="pill" title="ASTS">ASUP</button>
+      <button class="pill" title="RKLB">RKLX</button>
+      <button class="pill" title="CBRS">CBRX</button>
+      <button class="pill" title="ALAB">LABX</button>
+      <button class="pill" title="CLS">CSEX</button>
+      <button class="pill" title="COHR">COHX</button>
+      <button class="pill" title="LITE">LITX</button>
+      <button class="pill" title="NXPI">NXPX</button>
+      <button class="pill" title="MCHP">MCHU</button>
+      <button class="pill" title="STX">STXX</button>
+      <button class="pill" title="WDC">WDCX</button>
+      <button class="pill" title="IREN">IREX</button>
+      <button class="pill" title="LEU">LEUX</button>
+      <button class="pill" title="SOXX">SOXL</button>
+    </div>
+  </header>
+
+  <div class="sector-bar">
+    <button class="sector-chip active" data-sector="">全部 (44)</button>
+    <button class="sector-chip" data-sector="chip_design">芯片设计 (10)</button>
+    <button class="sector-chip" data-sector="foundry">晶圆代工·IDM (2)</button>
+    <button class="sector-chip" data-sector="equipment">制造设备 (4)</button>
+    <button class="sector-chip" data-sector="memory">存储 (4)</button>
+    <button class="sector-chip" data-sector="optical">光互连·光子 (5)</button>
+    <button class="sector-chip" data-sector="server">服务器·系统 (2)</button>
+    <button class="sector-chip" data-sector="cloud">云·算力 (3)</button>
+    <button class="sector-chip" data-sector="space">航天·国防 (4)</button>
+    <button class="sector-chip" data-sector="crypto">加密·金融科技 (5)</button>
+    <button class="sector-chip" data-sector="consumer">应用·终端 (1)</button>
+    <button class="sector-chip" data-sector="index">宽基指数 (3)</button>
+    <button class="sector-chip" data-sector="semi_index">板块指数 (1)</button>
+  </div>
+
+  <div class="controls">
+    <label>起始日期：</label>
+    <input type="date" id="dateInput">
+    <div class="presets">
+      <button class="preset-btn" data-p="ipo">发行日</button>
+      <button class="preset-btn" data-p="2022">2022</button>
+      <button class="preset-btn" data-p="2023">2023</button>
+      <button class="preset-btn" data-p="2024">2024</button>
+      <button class="preset-btn" data-p="2025">2025</button>
+      <button class="preset-btn" data-p="1y">近一年</button>
+    </div>
+    <span id="clamp-note">⚠ 已夹到最早可得日期</span>
+  </div>
+
+  <div class="charts-row">
+    <div id="chart-left"></div>
+    <div class="chart-divider"></div>
+    <div id="chart-right"></div>
+  </div>
+  <div class="disclaimer" id="disclaimer"></div>
+
+  <div class="nav-bar">
+    <button class="nav-btn" id="prev">&#8592; 上一个</button>
+    <span class="counter" id="counter"></span>
+    <button class="nav-btn" id="next">下一个 &#8594;</button>
+    <span class="hint">&#9095; 方向键切换</span>
+  </div>
+</div>
+
+<script>
+// ── Embedded price data ───────────────────────────────────────────────────────
+const DATA      = {"GGLL":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"GOOG"},"ARMG":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"ARM"},"MRVU":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"MRVL"},"NVDL":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"NVDA"},"AMDL":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"AMD"},"AVL":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"AVGO"},"INTW":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"INTC"},"QCMU":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"QCOM"},"TXNU":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"TXN"},"ONX":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"ON"},"SNXX":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"SNDK"},"MULL":{"dates":["2024-11-12","2024-11-13","2024-11-14","2024-11-15","2024-11-18","2024-11-19","2024-11-20","2024-11-21","2024-11-22","2024-11-25","2024-11-26","2024-11-27","2024-11-29","2024-12-02","2024-12-03","2024-12-04","2024-12-05","2024-12-06","2024-12-09","2024-12-10","2024-12-11","2024-12-12","2024-12-13","2024-12-16","2024-12-17","2024-12-18","2024-12-19","2024-12-20","2024-12-23","2024-12-24","2024-12-26","2024-12-27","2024-12-30","2024-12-31","2025-01-02","2025-01-03","2025-01-06","2025-01-07","2025-01-08","2025-01-10","2025-01-13","2025-01-14","2025-01-15","2025-01-16","2025-01-17","2025-01-21","2025-01-22","2025-01-23","2025-01-24","2025-01-27","2025-01-28","2025-01-29","2025-01-30","2025-01-31","2025-02-03","2025-02-04","2025-02-05","2025-02-06","2025-02-07","2025-02-10","2025-02-11","2025-02-12","2025-02-13","2025-02-14","2025-02-18","2025-02-19","2025-02-20","2025-02-21","2025-02-24","2025-02-25","2025-02-26","2025-02-27","2025-02-28","2025-03-03","2025-03-04","2025-03-05","2025-03-06","2025-03-07","2025-03-10","2025-03-11","2025-03-12","2025-03-13","2025-03-14","2025-03-17","2025-03-18","2025-03-19","2025-03-20","2025-03-21","2025-03-24","2025-03-25","2025-03-26","2025-03-27","2025-03-28","2025-03-31","2025-04-01","2025-04-02","2025-04-03","2025-04-04","2025-04-07","2025-04-08","2025-04-09","2025-04-10","2025-04-11","2025-04-14","2025-04-15","2025-04-16","2025-04-17","2025-04-21","2025-04-22","2025-04-23","2025-04-24","2025-04-25","2025-04-28","2025-04-29","2025-04-30","2025-05-01","2025-05-02","2025-05-05","2025-05-06","2025-05-07","2025-05-08","2025-05-09","2025-05-12","2025-05-13","2025-05-14","2025-05-15","2025-05-16","2025-05-19","2025-05-20","2025-05-21","2025-05-22","2025-05-23","2025-05-27","2025-05-28","2025-05-29","2025-05-30","2025-06-02","2025-06-03","2025-06-04","2025-06-05","2025-06-06","2025-06-09","2025-06-10","2025-06-11","2025-06-12","2025-06-13","2025-06-16","2025-06-17","2025-06-18","2025-06-20","2025-06-23","2025-06-24","2025-06-25","2025-06-26","2025-06-27","2025-06-30","2025-07-01","2025-07-02","2025-07-03","2025-07-07","2025-07-08","2025-07-09","2025-07-10","2025-07-11","2025-07-14","2025-07-15","2025-07-16","2025-07-17","2025-07-18","2025-07-21","2025-07-22","2025-07-23","2025-07-24","2025-07-25","2025-07-28","2025-07-29","2025-07-30","2025-07-31","2025-08-01","2025-08-04","2025-08-05","2025-08-06","2025-08-07","2025-08-08","2025-08-11","2025-08-12","2025-08-13","2025-08-14","2025-08-15","2025-08-18","2025-08-19","2025-08-20","2025-08-21","2025-08-22","2025-08-25","2025-08-26","2025-08-27","2025-08-28","2025-08-29","2025-09-02","2025-09-03","2025-09-04","2025-09-05","2025-09-08","2025-09-09","2025-09-10","2025-09-11","2025-09-12","2025-09-15","2025-09-16","2025-09-17","2025-09-18","2025-09-19","2025-09-22","2025-09-23","2025-09-24","2025-09-25","2025-09-26","2025-09-29","2025-09-30","2025-10-01","2025-10-02","2025-10-03","2025-10-06","2025-10-07","2025-10-08","2025-10-09","2025-10-10","2025-10-13","2025-10-14","2025-10-15","2025-10-16","2025-10-17","2025-10-20","2025-10-21","2025-10-22","2025-10-23","2025-10-24","2025-10-27","2025-10-28","2025-10-29","2025-10-30","2025-10-31","2025-11-03","2025-11-04","2025-11-05","2025-11-06","2025-11-07","2025-11-10","2025-11-11","2025-11-12","2025-11-13","2025-11-14","2025-11-17","2025-11-18","2025-11-19","2025-11-20","2025-11-21","2025-11-24","2025-11-25","2025-11-26","2025-11-28","2025-12-01","2025-12-02","2025-12-03","2025-12-04","2025-12-05","2025-12-08","2025-12-09","2025-12-10","2025-12-11","2025-12-12","2025-12-15","2025-12-16","2025-12-17","2025-12-18","2025-12-19","2025-12-22","2025-12-23","2025-12-24","2025-12-26","2025-12-29","2025-12-30","2025-12-31","2026-01-02","2026-01-05","2026-01-06","2026-01-07","2026-01-08","2026-01-09","2026-01-12","2026-01-13","2026-01-14","2026-01-15","2026-01-16","2026-01-20","2026-01-21","2026-01-22","2026-01-23","2026-01-26","2026-01-27","2026-01-28","2026-01-29","2026-01-30","2026-02-02","2026-02-03","2026-02-04","2026-02-05","2026-02-06","2026-02-09","2026-02-10","2026-02-11","2026-02-12","2026-02-13","2026-02-17","2026-02-18","2026-02-19","2026-02-20","2026-02-23","2026-02-24","2026-02-25","2026-02-26","2026-02-27","2026-03-02","2026-03-03","2026-03-04","2026-03-05","2026-03-06","2026-03-09","2026-03-10","2026-03-11","2026-03-12","2026-03-13","2026-03-16","2026-03-17","2026-03-18","2026-03-19","2026-03-20","2026-03-23","2026-03-24","2026-03-25","2026-03-26","2026-03-27","2026-03-30","2026-03-31","2026-04-01","2026-04-02","2026-04-06","2026-04-07","2026-04-08","2026-04-09","2026-04-10","2026-04-13","2026-04-14","2026-04-15","2026-04-16","2026-04-17","2026-04-20","2026-04-21","2026-04-22","2026-04-23","2026-04-24","2026-04-27","2026-04-28","2026-04-29","2026-04-30","2026-05-01","2026-05-04","2026-05-05","2026-05-06","2026-05-07","2026-05-08","2026-05-11","2026-05-12","2026-05-13","2026-05-14","2026-05-15","2026-05-18","2026-05-19","2026-05-20","2026-05-21","2026-05-22","2026-05-26","2026-05-27","2026-05-28","2026-05-29","2026-06-01","2026-06-02","2026-06-03","2026-06-04","2026-06-05","2026-06-08","2026-06-09","2026-06-10","2026-06-11","2026-06-12","2026-06-15","2026-06-16","2026-06-17","2026-06-18","2026-06-22","2026-06-23","2026-06-24","2026-06-25","2026-06-26"],"und_prices":[103.581795,99.422607,98.686287,95.860428,97.024612,97.243507,97.880333,102.248474,102.129066,103.959915,101.293251,97.711166,97.46241,98.059425,99.34301,102.686272,100.367874,100.666389,102.308167,97.611679,101.551941,97.750969,101.989761,107.721092,108.059402,103.382797,86.656471,89.671394,89.273376,88.835571,89.372887,88.188805,84.995613,83.849861,87.008186,89.538811,98.894211,101.534447,99.043663,98.973923,94.709686,97.001213,102.809738,102.221901,105.360291,108.976929,108.827469,104.453636,102.809738,90.774246,87.924789,88.681984,92.159126,90.903763,89.588623,90.325912,93.255066,94.191612,91.959869,95.576485,93.733307,91.342148,95.30748,99.153244,106.396461,103.975418,102.799759,98.475754,95.058411,92.876465,97.349922,91.481621,93.284958,90.206352,90.863914,93.99234,88.941017,92.617424,86.759094,88.72184,95.28756,94.530357,100.418571,102.730026,101.345146,101.683891,102.62043,94.370941,96.582764,93.832932,91.790489,90.824066,88.11409,86.682518,88.498169,88.388428,74.162483,64.565453,68.206741,65.383492,77.684052,69.882736,69.383919,70.850403,70.870361,69.164452,68.635712,66.580635,70.042343,72.755844,77.235123,79.589493,78.372406,76.696419,76.766251,77.58429,80.527245,80.227966,80.317749,82.422722,84.946663,85.654968,92.069618,96.69854,95.092392,95.222076,97.765984,98.414436,97.865746,95.611137,94.603561,93.147041,96.149849,95.950325,96.568848,94.234436,97.945557,102.005829,103.003441,106.036186,108.300758,110.685059,113.867439,115.75293,115.902573,115.323952,119.553833,120.052635,121.529106,123.304855,121.788483,127.604568,126.946136,125.69912,124.462082,122.955681,120.601326,121.449295,121.997978,119.746246,124.239723,122.062889,122.931625,124.349564,118.438148,119.935966,116.261307,113.095901,114.224258,113.065941,109.061752,109.670868,111.568115,111.098801,111.088814,111.797775,114.573746,108.981865,104.728043,107.613846,108.901978,108.622391,111.707916,118.717735,123.540741,127.564903,124.089935,125.108467,120.69487,123.370987,121.873161,117.040176,115.622231,117.509499,116.25132,116.3312,117.579391,121.823227,118.83757,118.308342,118.547989,124.030029,131.179657,131.269531,135.044052,139.79715,150.351837,157.002182,157.541397,158.58989,159.758194,168.645294,162.494217,164.381485,166.168884,161.475708,156.602768,157.042145,163.662521,167.077576,181.886063,183.483765,187.675308,190.802734,185.537079,196.378128,192.1716,181.450439,192.611252,186.905945,191.781921,202.36319,202.213333,206.599716,202.123398,198.306549,206.539764,218.83963,219.918747,221.727249,226.443359,223.8255,223.585709,234.506699,217.850433,237.304398,238.133713,237.72406,253.091385,240.911438,244.698288,236.754852,246.626709,241.750748,228.311813,225.733948,201.204147,207.199203,223.745575,224.345078,230.070358,236.285233,240.261978,239.29277,233.967163,226.463333,237.024643,246.716644,252.212128,263.492798,258.247131,240.941406,237.304398,232.318497,225.334274,248.345306,265.701019,276.362213,276.04248,286.443878,284.55545,294.246399,292.507111,285.290161,315.287567,312.018921,343.285767,339.40741,326.88266,344.945099,345.724762,337.988007,333.210022,336.488647,362.597687,364.846741,388.946594,397.413025,399.482178,388.926605,410.067719,435.097229,435.607025,414.70578,437.61615,419.263885,379.240692,382.729248,394.524261,383.338959,373.093262,410.167694,413.796173,411.487152,399.612122,420.773254,417.174744,427.990204,420.793243,417.834473,428.819855,415.385498,412.196838,412.496735,379.520569,400.601685,396.88327,370.144501,389.156525,402.940704,418.514191,405.179779,425.95108,441.614471,461.496124,461.536133,444.083435,422.722412,404.180206,395.363922,381.929565,355.31073,357.070007,321.799988,337.839996,367.850006,366.23999,377.76001,377.579987,406.730011,421.51001,420.589996,426.559998,465.660004,456.230011,457.230011,455.070007,448.420013,449.380005,487.480011,481.720001,496.720001,524.559998,504.290009,518.460022,517.159973,542.210022,576.450012,640.200012,666.590027,646.630005,746.809998,795.330017,766.580017,803.630005,776.01001,724.659973,681.539978,698.73999,731.98999,762.099976,751.0,895.880005,928.409973,923.52002,971.0,1035.5,1064.099976,1079.569946,996.0,864.01001,949.280029,935.890015,891.880005,995.869995,981.609985,1087.98999,1020.76001,1043.189941,1133.98999,1211.380005,1051.77002,1048.51001,1213.560059,1132.329956],"etf2x_prices":[0.909606,0.837046,0.822423,0.77656,0.793255,0.796802,0.805289,0.878964,0.87494,0.906418,0.857288,0.798515,0.793096,0.802858,0.823658,0.880319,0.839636,0.843382,0.870596,0.790426,0.8541,0.791861,0.85669,0.953117,0.959015,0.871433,0.586135,0.624587,0.621997,0.615621,0.623471,0.603668,0.56167,0.544815,0.585139,0.619367,0.749504,0.788952,0.749504,0.748707,0.684157,0.714838,0.801304,0.793454,0.836767,0.894544,0.891356,0.819235,0.795327,0.60825,0.570595,0.580557,0.622794,0.604863,0.587331,0.5953,0.636341,0.6471,0.618809,0.667421,0.639529,0.606457,0.661843,0.712049,0.813258,0.777396,0.75827,0.695314,0.643912,0.614426,0.677383,0.594105,0.616817,0.576572,0.585338,0.621997,0.557048,0.602193,0.524772,0.550792,0.630763,0.618809,0.696509,0.727987,0.707467,0.711252,0.72468,0.606855,0.634867,0.600082,0.574182,0.559837,0.525968,0.509631,0.531546,0.529952,0.358614,0.265773,0.296056,0.270953,0.371365,0.297252,0.291593,0.304822,0.304025,0.290079,0.285298,0.268562,0.294861,0.317573,0.356622,0.378139,0.366584,0.351044,0.351044,0.359411,0.38571,0.382921,0.383717,0.404398,0.427947,0.433924,0.500068,0.546289,0.52278,0.535531,0.558243,0.567009,0.559877,0.533539,0.521585,0.506443,0.539515,0.537125,0.543102,0.514014,0.557048,0.602472,0.61351,0.649491,0.676586,0.702884,0.74552,0.770224,0.770224,0.759067,0.821227,0.82557,0.844338,0.865894,0.848322,0.927616,0.915662,0.896536,0.873027,0.853901,0.821227,0.830392,0.838361,0.806086,0.869042,0.836767,0.848721,0.865456,0.784967,0.802499,0.75309,0.712447,0.725238,0.710057,0.661484,0.675789,0.690731,0.684037,0.683439,0.689735,0.725796,0.65475,0.601675,0.634867,0.652678,0.647219,0.684954,0.76871,0.832384,0.883865,0.835253,0.850315,0.788593,0.822781,0.801822,0.737152,0.71958,0.743926,0.725597,0.727748,0.744284,0.798236,0.756676,0.748309,0.751337,0.822024,0.912435,0.915662,0.967263,1.034802,1.187811,1.293801,1.302966,1.319542,1.336437,1.485222,1.375525,1.406964,1.440634,1.352494,1.269455,1.278261,1.385049,1.444021,1.694254,1.723023,1.805026,1.863201,1.758805,1.961621,1.873561,1.660385,1.868302,1.756414,1.848737,2.050079,2.045138,2.138777,2.044939,1.960625,2.127341,2.377614,2.398493,2.436945,2.543772,2.485597,2.47177,2.708256,2.321471,2.741448,2.755075,2.739017,3.09046,2.790698,2.874773,2.691481,2.913145,2.801178,2.486394,2.424234,1.889101,2.009436,2.329798,2.338963,2.457705,2.589595,2.674068,2.641793,2.530623,2.361516,2.581227,2.795997,2.917528,3.177324,3.049817,2.642192,2.555965,2.452524,2.302663,2.768504,3.149631,3.394485,3.384523,3.637825,3.59252,3.8288,3.7792,3.5876,4.3336,4.2536,5.1056,4.9632,4.6156,5.11224,5.13,4.9056,4.7664,4.8592,5.6016,5.6732,6.3952,6.6904,6.7492,6.3884,7.0664,7.9324,7.9596,7.1828,7.9864,7.3132,5.9144,6.0112,6.3618,6.0084,5.6808,6.8124,6.9396,6.8548,6.4604,7.1224,6.9644,7.35,7.1124,7.0048,7.364,6.883,6.7704,6.7916,5.7132,6.33324,6.19624,5.37016,5.9208,6.344,6.8132,6.3776,7.026,7.546,8.2008,8.2468,7.5808,6.8596,6.24,5.9644,5.552,4.7804,4.8344,3.8684,4.2544,5.0264,4.962,5.2748,5.2712,6.0736,6.5188,6.4392,6.6332,7.85,7.5292,7.5452,7.474,7.2696,7.2828,8.528,8.3088,8.7776,9.8168,9.0608,9.5336,9.5452,10.418,11.7416,14.3192,15.494,14.5032,19.038,21.534401,19.922001,21.872,20.280001,17.5632,15.4836,16.2036,17.879601,19.208401,18.683599,25.950001,27.799999,27.376801,30.319201,34.236,36.144279,37.198399,31.388399,23.16,27.5814,26.7684,24.200399,29.832001,28.924801,35.273998,30.84,32.104,37.630798,42.928398,31.5756,31.2048,41.223598,35.259998],"etf3x_prices":null,"und2_prices":null,"ipo":"2024-11-12","latest":"2026-06-26","fee2x":0.0115,"fee3x":null,"und":"MU","etf3x":null,"und2":null,"lev":2},"TSMX":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"TSM"},"ASMU":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"ASML"},"LRCU":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"LRCX"},"KLAG":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"KLAC"},"AMAU":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"AMAT"},"DLLL":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"DELL"},"LNOK":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"NOK"},"QLD":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"QQQ"},"SSO":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"SPY"},"DDM":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"DIA"},"TSLL":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"TSLA"},"CRCG":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"CRCL"},"SPAL":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"SPCX"},"MSTU":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"MSTR"},"CONL":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"COIN"},"HOOX":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"HOOD"},"NBIL":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"NBIS"},"CRWG":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"CRWV"},"ASUP":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"ASTS"},"RKLX":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"RKLB"},"CBRX":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"CBRS"},"LABX":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"ALAB"},"CSEX":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"CLS"},"COHX":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"COHR"},"LITX":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"LITE"},"NXPX":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"NXPI"},"MCHU":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"MCHP"},"STXX":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"STX"},"WDCX":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"WDC"},"IREX":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"IREN"},"LEUX":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"LEU"},"SOXL":{"error":"未在此次运行中加载 (仅运行 MULL)","und":"SOXX"}};
+const ETF_ORDER = ["GGLL", "ARMG", "MRVU", "NVDL", "AMDL", "AVL", "INTW", "QCMU", "TXNU", "ONX", "SNXX", "MULL", "TSMX", "ASMU", "LRCU", "KLAG", "AMAU", "DLLL", "LNOK", "QLD", "SSO", "DDM", "TSLL", "CRCG", "SPAL", "MSTU", "CONL", "HOOX", "NBIL", "CRWG", "ASUP", "RKLX", "CBRX", "LABX", "CSEX", "COHX", "LITX", "NXPX", "MCHU", "STXX", "WDCX", "IREX", "LEUX", "SOXL"];
+const N         = ETF_ORDER.length;
+const SECTORS   = {"NVDL": "chip_design", "AMDL": "chip_design", "AVL": "chip_design", "ARMG": "chip_design", "QCMU": "chip_design", "TXNU": "chip_design", "NXPX": "chip_design", "MCHU": "chip_design", "CBRX": "chip_design", "ONX": "chip_design", "TSMX": "foundry", "INTW": "foundry", "LRCU": "equipment", "KLAG": "equipment", "ASMU": "equipment", "AMAU": "equipment", "MULL": "memory", "SNXX": "memory", "STXX": "memory", "WDCX": "memory", "MRVU": "optical", "COHX": "optical", "LITX": "optical", "LABX": "optical", "LNOK": "optical", "DLLL": "server", "CSEX": "server", "GGLL": "cloud", "NBIL": "cloud", "CRWG": "cloud", "SPAL": "space", "ASUP": "space", "RKLX": "space", "LEUX": "space", "MSTU": "crypto", "CONL": "crypto", "HOOX": "crypto", "CRCG": "crypto", "IREX": "crypto", "TSLL": "consumer", "QLD": "index", "SSO": "index", "DDM": "index", "SOXL": "semi_index"};
+
+const STATE = {};
+let cur = 0, chartL = null, chartR = null;
+let visibleOrder = [...ETF_ORDER];
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function fmtPct(v) {
+  const p = (v * 100).toFixed(1);
+  return (v >= 0 ? "+" : "") + p + "%";
+}
+function fmtMult(v) {
+  if (v >= 100) return v.toFixed(0) + "×";
+  if (v >= 10)  return v.toFixed(1) + "×";
+  if (v >= 1)   return v.toFixed(2) + "×";
+  return v.toFixed(3) + "×";
+}
+function lowerBound(arr, target) {
+  let lo = 0, hi = arr.length - 1;
+  while (lo < hi) { const m = (lo + hi) >> 1; arr[m] < target ? lo = m + 1 : hi = m; }
+  return lo;
+}
+
+// ── Simulation (right chart) ──────────────────────────────────────────────────
+function computeSim(undPrices, si, fee, lev) {
+  const s = undPrices.slice(si), n = s.length, p0 = s[0], df = fee / 252;
+  const oneX  = new Float64Array(n);
+  const naive = new Float64Array(n);
+  const dr    = new Float64Array(n);
+  oneX[0] = naive[0] = dr[0] = 1.0;
+  for (let i = 1; i < n; i++) {
+    const net = s[i] / p0;
+    oneX[i]   = net;
+    naive[i]  = 1 + lev * (net - 1);
+    const r   = s[i] / s[i - 1] - 1;
+    dr[i]     = dr[i - 1] * (1 + lev * r - df);
+  }
+  return { oneX, naive, dr };
+}
+
+// ── 3× simulation (for index pages) ──────────────────────────────────────────
+function computeSim3(undPrices, si, fee3x) {
+  const s = undPrices.slice(si), n = s.length, p0 = s[0], df = fee3x / 252;
+  const naive3 = new Float64Array(n);
+  const dr3    = new Float64Array(n);
+  naive3[0] = dr3[0] = 1.0;
+  for (let i = 1; i < n; i++) {
+    const net = s[i] / p0;
+    naive3[i]  = 1 + 3 * (net - 1);
+    const r    = s[i] / s[i - 1] - 1;
+    dr3[i]     = dr3[i - 1] * (1 + 3 * r - df);
+  }
+  return { naive3, dr3 };
+}
+
+// ── Log-axis guard & bounds ───────────────────────────────────────────────────
+function logBounds(arrays) {
+  const allVals = arrays.flat().filter(v => v > 0);
+  if (!allVals.length) return { useLog: false };
+  const maxAll = Math.max(...allVals), minAll = Math.min(...allVals);
+  const useLog = maxAll > 5 && minAll > 0.01;
+  if (!useLog) return { useLog: false };
+  const lMin = Math.log10(Math.max(minAll, 1e-9));
+  const lMax = Math.log10(maxAll);
+  const pad  = (lMax - lMin) * 0.12;
+  return { useLog: true, yMin: Math.pow(10, lMin - pad), yMax: Math.pow(10, lMax + pad) };
+}
+
+// ── Rebase series to index 0 = 1.0 ───────────────────────────────────────────
+function rebase(prices, si) {
+  const s = prices.slice(si), p0 = s[0];
+  return s.map(v => v / p0);
+}
+
+// ── Shared yAxis config builder ───────────────────────────────────────────────
+function yAxisCfg(useLog, yMin, yMax, name) {
+  return {
+    type: useLog ? "log" : "value",
+    logBase: 10,
+    min: useLog ? yMin : undefined,
+    max: useLog ? yMax : undefined,
+    name,
+    nameTextStyle: { color: "#4b5563", fontSize: 8.5, padding: [0,0,0,54] },
+    axisLine:  { lineStyle: { color: "#30363d" } },
+    axisTick:  { show: false },
+    axisLabel: { color: "#6b7280", fontSize: 9, formatter: v => fmtMult(v) },
+    splitLine: { lineStyle: { color: "#21262d", width: 0.8 } },
+  };
+}
+function xAxisCfg(dates) {
+  return {
+    type: "category",
+    data: dates,
+    axisLine:  { lineStyle: { color: "#30363d" } },
+    axisTick:  { show: false },
+    axisLabel: { color: "#6b7280", fontSize: 9, interval: "auto", showMaxLabel: true },
+    splitLine: { show: false },
+  };
+}
+function tooltipCfg() {
+  return {
+    trigger: "axis",
+    backgroundColor: "#1c2333",
+    borderColor: "#30363d",
+    textStyle: { color: "#e5e7eb", fontSize: 11 },
+    axisPointer: { lineStyle: { color: "#444c56" } },
+    formatter(params) {
+      return "<b>" + params[0].axisValue + "</b><br>" + params.map(p =>
+        `<span style="color:${p.color}">●</span>&nbsp;${p.seriesName}:&nbsp;<b>${fmtPct(p.value - 1)}</b>`
+      ).join("<br>");
+    },
+  };
+}
+
+// ── Push end-labels apart if they overlap ─────────────────────────────────────
+function fixEndLabels(ch, pts) {
+  try {
+    pts.forEach(p => { p.py = ch.convertToPixel({ yAxisIndex: 0 }, p.val); });
+    pts.sort((a, b) => b.py - a.py);
+    const minPx = 16;
+    for (let pass = 0; pass < 4; pass++) {
+      for (let i = 0; i < pts.length - 1; i++) {
+        const gap = pts[i].py - pts[i + 1].py;
+        if (gap < minPx) {
+          const adj = (minPx - gap) / 2;
+          pts[i].py     += adj;
+          pts[i + 1].py -= adj;
+        }
+      }
+    }
+    const ordered = Array(pts.length).fill(null);
+    pts.forEach(p => {
+      ordered[p.idx] = { endLabel: { offset: [0, p.py - ch.convertToPixel({ yAxisIndex: 0 }, p.val)] } };
+    });
+    ch.setOption({ series: ordered });
+  } catch (_) {}
+}
+
+// ── LEFT chart: real price comparison (rebase to window start = 1) ────────────
+function drawLeft(d, etf, dates, si) {
+  const lev = d.lev || 2;
+  const undReb  = rebase(d.und_prices,  si);
+  const e2xReb  = rebase(d.etf2x_prices, si);
+
+  const series = [
+    {
+      name: `${d.und} 正股 (1×)`,
+      type: "line", data: undReb, symbol: "none",
+      lineStyle: { color: "#9ca3af", width: 1.5 },
+      itemStyle: { color: "#9ca3af" },
+      endLabel: { show: true, formatter: () => fmtPct(undReb[undReb.length-1]-1),
+                  color: "#9ca3af", fontSize: 10, fontWeight: "bold" },
+    },
+    {
+      name: `${etf} (真实${lev}×)`,
+      type: "line", data: e2xReb, symbol: "none",
+      lineStyle: { color: "#2dd4bf", width: 2.5 },
+      itemStyle: { color: "#2dd4bf" },
+      endLabel: { show: true, formatter: () => fmtPct(e2xReb[e2xReb.length-1]-1),
+                  color: "#2dd4bf", fontSize: 10, fontWeight: "bold" },
+    },
+  ];
+  const pts = [
+    { idx: 0, val: undReb[undReb.length-1] },
+    { idx: 1, val: e2xReb[e2xReb.length-1] },
+  ];
+
+  // 3× ETF line (index pages)
+  if (d.etf3x && d.etf3x_prices) {
+    const e3xReb = rebase(d.etf3x_prices, si);
+    series.push({
+      name: `${d.etf3x} (真实3×)`,
+      type: "line", data: e3xReb, symbol: "none",
+      lineStyle: { color: "#c084fc", width: 2.5 },
+      itemStyle: { color: "#c084fc" },
+      endLabel: { show: true, formatter: () => fmtPct(e3xReb[e3xReb.length-1]-1),
+                  color: "#c084fc", fontSize: 10, fontWeight: "bold" },
+    });
+    pts.push({ idx: 2, val: e3xReb[e3xReb.length-1] });
+  }
+
+  // Secondary 1× reference (SMH for SOXL)
+  if (d.und2_prices) {
+    const und2Dates = d.und2_prices.dates;
+    const und2Prices = d.und2_prices.prices;
+    const si2 = lowerBound(und2Dates, dates[0]);
+    if (si2 < und2Prices.length) {
+      const und2Reb = rebase(und2Prices, si2);
+      // Align to main dates — fill with null where missing
+      const und2Map = {};
+      for (let i = si2; i < und2Dates.length; i++) {
+        und2Map[und2Dates[i]] = und2Reb[i - si2];
+      }
+      const und2Aligned = dates.map(dt => und2Map[dt] ?? null);
+      const lastValid = und2Aligned.reduce((acc, v, i) => v !== null ? i : acc, 0);
+      series.push({
+        name: `${d.und2_prices.label} (1× 参考)`,
+        type: "line", data: und2Aligned, symbol: "none",
+        lineStyle: { color: "#6b7280", width: 1.2, type: "dashed" },
+        itemStyle: { color: "#6b7280" },
+        endLabel: { show: true,
+                    formatter: () => und2Aligned[lastValid] != null ? fmtPct(und2Aligned[lastValid]-1) : "",
+                    color: "#6b7280", fontSize: 10 },
+        connectNulls: false,
+      });
+      if (und2Aligned[lastValid] != null)
+        pts.push({ idx: series.length-1, val: und2Aligned[lastValid] });
+    }
+  }
+
+  const allArrays = series.map(s => s.data.filter(v => v !== null));
+  const { useLog, yMin, yMax } = logBounds(allArrays);
+  const guard = useLog ? v => (v > 0 ? v : 1e-6) : v => v;
+  series.forEach(s => { s.data = s.data.map(v => v === null ? null : guard(v)); });
+  pts.forEach(p => { p.val = guard(p.val); });
+
+  const narrow = window.innerWidth < 520;
+  chartL.setOption({
+    backgroundColor: "#0d1117",
+    animation: false,
+    title: [{ text: narrow ? `实际价格  ${dates[0]}` : `实际价格对比  ·  起点 = 100  ·  ${dates[0]} →`,
+              textStyle: { color: "#e5e7eb", fontSize: 11, fontWeight: "bold" },
+              top: 10, left: 12 }],
+    grid:    { top: 44, right: 96, bottom: 46, left: 64 },
+    xAxis:   xAxisCfg(dates),
+    yAxis:   yAxisCfg(useLog, yMin, yMax, useLog ? "净值（对数，起点=1）" : "净值（起点=1）"),
+    tooltip: tooltipCfg(),
+    legend:  { bottom: 5, textStyle: { color: "#9ca3af", fontSize: 9 },
+               icon: "roundRect", itemWidth: 18, itemHeight: 3 },
+    series,
+  }, { notMerge: true });
+
+  setTimeout(() => fixEndLabels(chartL, pts), 30);
+}
+
+// ── RIGHT chart: decay simulation ────────────────────────────────────────────
+function drawRight(d, etf, dates, si) {
+  const lev  = d.lev || 2;
+  const fee  = d.fee2x;
+  const { oneX, naive, dr } = computeSim(d.und_prices, si, fee, lev);
+
+  const last = dates.length - 1;
+  const fO = oneX[last], fN = naive[last], fD = dr[last];
+
+  const allArrs = [Array.from(oneX), Array.from(naive), Array.from(dr)];
+  const series = [
+    {
+      name: `${d.und} 正股 (1×)`,
+      type: "line", data: Array.from(oneX), symbol: "none",
+      lineStyle: { color: "#9ca3af", width: 1.5 },
+      itemStyle: { color: "#9ca3af" },
+      endLabel: { show: true, formatter: () => fmtPct(fO-1),
+                  color: "#9ca3af", fontSize: 10, fontWeight: "bold" },
+    },
+    {
+      name: `朴素${lev}倍累计`,
+      type: "line", data: Array.from(naive), symbol: "none",
+      lineStyle: { color: "#f59e0b", width: 1.8, type: "dashed" },
+      itemStyle: { color: "#f59e0b" },
+      endLabel: { show: true, formatter: () => fmtPct(fN-1),
+                  color: "#f59e0b", fontSize: 10, fontWeight: "bold" },
+    },
+    {
+      name: `模拟每日重置${lev}× (${etf})`,
+      type: "line", data: Array.from(dr), symbol: "none",
+      lineStyle: { color: "#2dd4bf", width: 2.5 },
+      itemStyle: { color: "#2dd4bf" },
+      endLabel: { show: true, formatter: () => fmtPct(fD-1),
+                  color: "#2dd4bf", fontSize: 10, fontWeight: "bold" },
+    },
+  ];
+  const pts = [
+    { idx: 0, val: fO },
+    { idx: 1, val: fN },
+    { idx: 2, val: fD },
+  ];
+
+  // Extra 3× simulation lines for index pages
+  if (d.etf3x && d.fee3x != null) {
+    const { naive3, dr3 } = computeSim3(d.und_prices, si, d.fee3x);
+    const fN3 = naive3[last], fD3 = dr3[last];
+    allArrs.push(Array.from(naive3), Array.from(dr3));
+    series.push({
+      name: "朴素3倍累计",
+      type: "line", data: Array.from(naive3), symbol: "none",
+      lineStyle: { color: "#fb923c", width: 1.8, type: "dashed" },
+      itemStyle: { color: "#fb923c" },
+      endLabel: { show: true, formatter: () => fmtPct(fN3-1),
+                  color: "#fb923c", fontSize: 10, fontWeight: "bold" },
+    });
+    series.push({
+      name: `模拟每日重置3× (${d.etf3x})`,
+      type: "line", data: Array.from(dr3), symbol: "none",
+      lineStyle: { color: "#c084fc", width: 2.5 },
+      itemStyle: { color: "#c084fc" },
+      endLabel: { show: true, formatter: () => fmtPct(fD3-1),
+                  color: "#c084fc", fontSize: 10, fontWeight: "bold" },
+    });
+    pts.push({ idx: 3, val: fN3 }, { idx: 4, val: fD3 });
+  }
+
+  const { useLog, yMin, yMax } = logBounds(allArrs);
+  const guard = useLog ? v => Math.max(v, 1e-6) : v => v;
+  series.forEach(s => { s.data = s.data.map(guard); });
+  pts.forEach(p => { p.val = guard(p.val); });
+
+  chartR.setOption({
+    backgroundColor: "#0d1117",
+    animation: false,
+    title: [{ text: `衰减模拟  ·  ${lev}× 每日重置  ·  ${dates[0]} →`,
+              textStyle: { color: "#e5e7eb", fontSize: 11, fontWeight: "bold" },
+              top: 10, left: 12 }],
+    grid:    { top: 44, right: 96, bottom: 46, left: 64 },
+    xAxis:   xAxisCfg(dates),
+    yAxis:   yAxisCfg(useLog, yMin, yMax, useLog ? "净值（对数，起点=1）" : "净值（起点=1）"),
+    tooltip: tooltipCfg(),
+    legend:  { bottom: 5, textStyle: { color: "#9ca3af", fontSize: 9 },
+               icon: "roundRect", itemWidth: 18, itemHeight: 3 },
+    series,
+  }, { notMerge: true });
+
+  setTimeout(() => fixEndLabels(chartR, pts), 30);
+}
+
+// ── Redraw both charts ────────────────────────────────────────────────────────
+function redraw() {
+  const etf = visibleOrder[cur];
+  const d   = DATA[etf];
+
+  const errOpt = (msg) => ({
+    backgroundColor: "#0d1117",
+    graphic: [{ type: "text", left: "center", top: "middle",
+      style: { text: msg, fill: "#f87171", fontSize: 16 } }]
+  });
+
+  if (!d || d.error) {
+    chartL.clear(); chartL.setOption(errOpt(d ? d.error : "无数据"));
+    chartR.clear(); chartR.setOption(errOpt(d ? d.error : "无数据"));
+    document.getElementById("disclaimer").textContent = "";
+    return;
+  }
+
+  // Resolve start date
+  const input     = document.getElementById("dateInput");
+  const clampNote = document.getElementById("clamp-note");
+  const requested = input.value;
+  const clamped   = !requested || requested < d.dates[0];
+  const startDate = clamped ? d.dates[0] : requested;
+  if (clamped) input.value = startDate;
+  clampNote.style.display = clamped ? "inline" : "none";
+  STATE[etf] = startDate;
+
+  const si    = lowerBound(d.dates, startDate);
+  const dates = d.dates.slice(si);
+
+  drawLeft(d, etf, dates, si);
+  drawRight(d, etf, dates, si);
+
+  document.getElementById("disclaimer").textContent =
+    `假设费率 ${(d.fee2x * 100).toFixed(2)}%/年  ·  ` +
+    `数据: yfinance ${d.und} 日线复权收盘价 ${d.dates[0]} 至 ${d.latest} (${d.dates.length} 交易日)  ·  仅供学习参考，非投资建议。`;
+}
+
+// ── ETF switcher ──────────────────────────────────────────────────────────────
+function show(i) {
+  const n = visibleOrder.length;
+  if (!n) return;
+  const pills = document.querySelectorAll(".pill");
+  pills.forEach(p => p.classList.remove("active"));
+  cur = ((i % n) + n) % n;
+  const etf = visibleOrder[cur];
+  const pi  = ETF_ORDER.indexOf(etf);
+  pills[pi].classList.add("active");
+  pills[pi].scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+  document.getElementById("counter").innerHTML = (cur + 1) + "&nbsp;/&nbsp;" + n;
+
+  const d = DATA[etf];
+  const input = document.getElementById("dateInput");
+  if (d && !d.error) {
+    input.min   = d.dates[0];
+    input.max   = d.latest;
+    input.value = STATE[etf] || d.ipo;
+  }
+  document.getElementById("clamp-note").style.display = "none";
+  redraw();
+}
+
+// ── Sector filter ─────────────────────────────────────────────────────────────
+function setFilter(sectorKey) {
+  visibleOrder = sectorKey
+    ? ETF_ORDER.filter(e => SECTORS[e] === sectorKey)
+    : [...ETF_ORDER];
+  document.querySelectorAll(".pill").forEach((pill, i) => {
+    pill.style.display = (!sectorKey || SECTORS[ETF_ORDER[i]] === sectorKey) ? "" : "none";
+  });
+  document.querySelectorAll(".sector-chip").forEach(chip => {
+    chip.classList.toggle("active", chip.dataset.sector === sectorKey);
+  });
+  show(0);
+}
+
+// ── Preset buttons ────────────────────────────────────────────────────────────
+document.querySelectorAll(".preset-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const d = DATA[visibleOrder[cur]];
+    if (!d || d.error) return;
+    const input = document.getElementById("dateInput");
+    const p = btn.dataset.p;
+    let t;
+    if (p === "ipo") {
+      t = d.ipo;
+    } else if (p === "1y") {
+      const dt = new Date(d.latest);
+      dt.setFullYear(dt.getFullYear() - 1);
+      t = dt.toISOString().slice(0, 10);
+    } else {
+      t = p + "-01-02";
+    }
+    if (t < d.dates[0]) t = d.dates[0];
+    if (t > d.latest)   t = d.latest;
+    input.value = t;
+    redraw();
+  });
+});
+
+// ── Wire-up ───────────────────────────────────────────────────────────────────
+document.getElementById("dateInput").addEventListener("change", redraw);
+document.querySelectorAll(".pill").forEach((p, i) => {
+  const etf = ETF_ORDER[i];
+  p.addEventListener("click", () => {
+    const vi = visibleOrder.indexOf(etf);
+    if (vi >= 0) show(vi);
+  });
+});
+document.querySelectorAll(".sector-chip").forEach(chip => {
+  chip.addEventListener("click", () => setFilter(chip.dataset.sector));
+});
+document.getElementById("prev").addEventListener("click", () => show(cur - 1));
+document.getElementById("next").addEventListener("click", () => show(cur + 1));
+document.addEventListener("keydown", e => {
+  if (e.key === "ArrowRight" || e.key === "ArrowDown") show(cur + 1);
+  if (e.key === "ArrowLeft"  || e.key === "ArrowUp")   show(cur - 1);
+});
+window.addEventListener("resize", () => {
+  chartL && chartL.resize();
+  chartR && chartR.resize();
+});
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+chartL = echarts.init(document.getElementById("chart-left"),  null, { renderer: "canvas" });
+chartR = echarts.init(document.getElementById("chart-right"), null, { renderer: "canvas" });
+show(0);
+</script>
+</body>
+</html>

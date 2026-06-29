@@ -1,104 +1,28 @@
-# Stock Watchlist Dashboard
+# Stock / ETF Projects — Root
 
-## What This Project Does
+This repo contains two independent projects sharing a single git root and `.venv`.
 
-Reads `stock list.txt` (124 tickers), fetches historical price data and company info from Yahoo Finance via `yfinance`, and generates a self-contained interactive `dashboard.html` file.
+| Sub-project | Folder | GitHub Repo | Purpose |
+|---|---|---|---|
+| Stock Watchlist Dashboard | `stock-dashboard/` | `wangcong-creator/stock-watchlist-dashboard` | 124-stock watchlist with sector filters, sparklines, price history |
+| ETF Decay Charts | `etf-decay-charts/` | `wangcong-creator/etf-decay-charts` | Leveraged ETF volatility-decay analysis (interactive + static) |
 
-## Prerequisites
-
-```
-pip install yfinance pandas
-```
-
-## How to Run
+## Shared Setup
 
 ```
-python generate_dashboard.py
+pip install yfinance pandas matplotlib numpy
 ```
 
-Then open `dashboard.html` in any browser. No server required — the file is fully self-contained.
-
-## Dashboard Features
-
-- **Sector pills**: Click to filter by industry (Chip Designers, Equipment, Foundries, Memory, Optical, AI/Data Center, Networking, Energy, Space, Crypto, ETFs, Leveraged ETFs, etc.)
-- **Filter bar**: Search by name/ticker, filter by sector/exchange/type/currency, sort by any metric
-- **Stock cards**: Ticker, name, sector badge, current price, 1D % change, sparkline chart, market cap, P/E, beta
-- **Detail modal**: Full price history chart from IPO, all key metrics, company description, website link
-
-## Stock List (`stock list.txt`)
-
-One stock per line. Supported formats:
-- `TICKER - Company Name`
-- `Chinese Name (TICKER)`
-- `TICKER公司`
-
-To add/remove stocks: edit the file and re-run the script.
-
-## Cache (`stock_cache.json`)
-
-Auto-generated on first run. Data is reused for **24 hours** before re-fetching. To force a full refresh:
+Virtual environment is at `.venv/` (repo root). Run scripts with:
 
 ```
-del stock_cache.json
-python generate_dashboard.py
+.venv/bin/python3 stock-dashboard/generate_dashboard.py
+.venv/bin/python3 etf-decay-charts/generate_interactive_charts.py
 ```
 
-To refresh only specific tickers: delete their entries from `stock_cache.json` (it's plain JSON).
+Or activate once: `source .venv/bin/activate`, then call scripts directly.
 
-## Configuration
+## Project Docs
 
-Edit constants at the top of `generate_dashboard.py`:
-
-| Constant | Default | Description |
-|---|---|---|
-| `CACHE_MAX_AGE_HRS` | `24` | Hours before data is considered stale |
-| `CHART_PERIOD` | `"max"` | yfinance period — `"max"` = from IPO; also `"10y"`, `"5y"`, `"1y"` |
-| `RATE_LIMIT_DELAY` | `0.3` | Seconds between API calls (increase if getting throttled) |
-
-## Sector Classifications
-
-Defined in `SECTOR_MAP` dict at the top of `generate_dashboard.py`. Each ticker maps to one of these sector keys:
-
-| Key | Label |
-|---|---|
-| `chip_designer` | Chip Designers |
-| `chip_equipment` | Chip Equipment |
-| `foundry` | Foundries & Fab |
-| `packaging_ems` | Packaging / EMS |
-| `memory_storage` | Memory & Storage |
-| `optical_photonics` | Optical & Photonics |
-| `ai_datacenter` | AI & Data Center |
-| `networking` | Networking & Comms |
-| `energy_power` | Energy & Power |
-| `space_aerospace` | Space & Aerospace |
-| `crypto` | Crypto & Blockchain |
-| `etf_semi` | Semiconductor ETFs |
-| `etf_other` | Space / Other ETFs |
-| `leveraged_etf` | Leveraged ETFs (2×) |
-| `hardware_other` | Hardware & Other |
-
-To reclassify a ticker, change its value in `SECTOR_MAP` and re-run the script. No re-fetch is needed for sector changes — the dashboard is regenerated from cache.
-
-## Decay Charts (`generate_decay_charts.py`)
-
-Generates `decay_charts.html` — leveraged ETF volatility-decay comparison charts (daily-reset 2× vs naive 2×) for each leveraged ETF pair from its IPO date.
-
-```
-.venv/bin/python3 generate_decay_charts.py
-```
-
-**IMPORTANT — Deployment target:** The decay charts have a **separate** GitHub repository: `wangcong-creator/etf-decay-charts` (live at https://wangcong-creator.github.io/etf-decay-charts/). The local git remote points to `stock-watchlist-dashboard` — do NOT push decay chart updates there.
-
-To deploy after regenerating `decay_charts.html`, upload it as `index.html` on the `main` branch via the GitHub API:
-
-```
-# 1. Get current file SHA
-gh api repos/wangcong-creator/etf-decay-charts/contents/index.html --jq '.sha'
-
-# 2. Upload new content
-base64 -i decay_charts.html | gh api repos/wangcong-creator/etf-decay-charts/contents/index.html \
-  --method PUT \
-  --field message="<commit message>" \
-  --field sha="<sha from step 1>" \
-  --field content=@-
-```
+- Stock dashboard details → [stock-dashboard/CLAUDE.md](stock-dashboard/CLAUDE.md)
+- ETF decay charts details → [etf-decay-charts/CLAUDE.md](etf-decay-charts/CLAUDE.md)

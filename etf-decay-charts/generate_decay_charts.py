@@ -13,6 +13,7 @@ import base64
 import warnings
 from io import BytesIO
 from datetime import datetime
+from pathlib import Path
 
 import matplotlib
 matplotlib.use("Agg")
@@ -608,7 +609,7 @@ def main():
         total=len(panel_parts),
     )
 
-    out = "decay_charts.html"
+    out = str(Path(__file__).parent / "decay_charts.html")
     with open(out, "w", encoding="utf-8") as fh:
         fh.write(html)
 

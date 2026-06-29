@@ -19,7 +19,7 @@ from generate_dashboard import (
     fmt_cap,
 )
 
-OUTPUT_FILE = "dashboard_zh.html"
+OUTPUT_FILE = str(Path(__file__).parent / "dashboard_zh.html")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 板块分类（中文标签）
